@@ -1,15 +1,15 @@
 version: 0.2
 
 variables:
-  #DOCKER_USER: satishkollati
-  #DOCKER_PASS: dckr_pat__50E-XDAUca2Pr5pSmq0srKYumg
+  DOCKER_USER: satishkollati
+  DOCKER_PASS: dckr_pat__50E-XDAUca2Pr5pSmq0srKYumg
   APP_NAME: my-web-ap
 
 phases:
   pre_build:
     commands:
       # Logging into Docker using the Docker username and token (password) from environment variables
-      - echo "$DOCKER_PASS" | docker login -u ${DOCKER_USER} --password-stdin
+      - echo "dckr_pat__50E-XDAUca2Pr5pSmq0srKYumg" | docker login -u ${DOCKER_USER} --password-stdin
   
   build:
     commands:
