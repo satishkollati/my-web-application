@@ -4,7 +4,7 @@ variables:
   DOCKER_PASS: dckr_pat__50E-XDAUca2Pr5pSmq0srKYumg
   APP_NAME: my-web-ap
 phases:
- Pre_build:
+ pre_build:
   commands:
      - echo "$DOCKER_PASS" | docker login -u ${DOCKER_USER} --password-stdin
  build:
