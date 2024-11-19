@@ -1,6 +1,6 @@
 version: 0.2
 variables:
-  DOCKER_USE: satishkollati
+  DOCKER_USER: satishkollati
   DOCKER_PASS: dckr_pat__50E-XDAUca2Pr5pSmq0srKYumg
   APP_NAME: my-web-ap
 phases:
