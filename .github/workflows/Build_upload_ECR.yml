@@ -1,0 +1,35 @@
+name: build and upload to ecr
+on:
+ workflow_dispatch:
+  inputs:
+    java_version:
+      type: string
+      required: true
+      default: '17'
+jobs:
+  Build_Push_ECR:
+    runs-on: ubuntu-latest
+    steps:
+       - name: clone the repo
+         uses: actions/checkout@v4
+       - name: install Java
+         uses: actions/setup-java@v4
+         with:
+            java-version: ${{ inputs.java_version }}
+            distribution: 'temurin'
+       - name: build the code
+         run: mvn clean package
+       - name: Set up AWS CLI
+         uses: aws-actions/configure-aws-credentials@v2
+         with:
+           role-to-assume: ${{ secrets.aws_role }}
+           aws-region: us-east-1
+           
+       - name: Build and push Docker image
+         run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 891377396208.dkr.ecr.us-east-1.amazonaws.com
+          docker build -t my-app-repository .
+          docker tag my-app-repository:latest 891377396208.dkr.ecr.us-east-1.amazonaws.com/my-app-repository:${{ github.run_number }}  
+          docker push 891377396208.dkr.ecr.us-east-1.amazonaws.com/my-app-repository:${{ github.run_number }}
+      
+      
