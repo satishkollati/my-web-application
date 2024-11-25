@@ -22,7 +22,7 @@ jobs:
        - name: Set up AWS CLI
          uses: aws-actions/configure-aws-credentials@v2
          with:
-           role-to-assume: ${{ secrets.aws_role }}
+           role-to-assume: ${{ secrets.AWS_ROLE }}
            aws-region: us-east-1
            
        - name: Build and push Docker image
