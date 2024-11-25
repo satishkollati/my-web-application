@@ -27,7 +27,7 @@ jobs:
        - name: Build and push Docker image
          run: |
           docker build -t my-webapp .
-          docker tag my-webapp satishkollati/my-webapp:latest
+          docker tag my-webapp satishkollati/my-webapp:${{ github.run_number }}
           docker push satishkollati/my-webapp:${{ github.run_number }}
       
       
