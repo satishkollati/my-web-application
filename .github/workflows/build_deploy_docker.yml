@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
        - name: clone the repo
-         uses: actions/checlout@v4
+         uses: actions/checkout@v4
        - name: install Java
          uses: actions/setup-java@v4
        - name: build the code
