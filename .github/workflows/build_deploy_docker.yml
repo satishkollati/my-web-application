@@ -1,0 +1,30 @@
+name: build and deploy to dockerhub
+on:
+ workflow_dispatch:
+  inputs:
+    java_version:
+      type: string
+      required: true
+      default: '17'
+jobs:
+  Build_Push_DokerHub:
+    runs-on: ubuntu-latest
+    steps:
+       - name: clone the repo
+         uses: actions/checlout@v4
+       - name: install Java
+         uses: actions/setup-java@v4
+       - name: build the code
+         run: mvn clean package
+       - name: Log in to Docker Hub
+         uses: docker/login-action@v2
+         with:
+          username: ${{ secrets.DOCKER_USERNAME }}   # Docker Hub username from GitHub secrets
+          password: ${{ secrets.DOCKER_PASSWORD }}   # Docker Hub password or token from GitHub secrets
+       - name: Build and push Docker image
+         run: |
+          docker build -t my-webapp .
+          docker tag my-webapp satishkollati/my-webapp:latest
+          docker push
+      
+      
