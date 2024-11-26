@@ -20,17 +20,22 @@ jobs:
          with:
             java-version: ${{ inputs.java_version }}
             distribution: 'temurin'
+            
        - name: build the code
-         if: false
+         if: true
          run: mvn clean package
+       
        - name: Set up AWS CLI
          uses: aws-actions/configure-aws-credentials@v2
          with:
            role-to-assume: ${{ secrets.AWS_ROLE }}
            aws-region: us-east-1
            
+       - name: Log in to Amazon ECR
+         uses: aws-actions/amazon-ecr-login@v1
+            
        - name: Build and push Docker image
-         if: false
+         if: true
          run: |
           aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin 891377396208.dkr.ecr.us-east-1.amazonaws.com
           docker build -t my-app-repository .
