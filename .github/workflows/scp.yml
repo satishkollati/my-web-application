@@ -27,7 +27,7 @@ jobs:
           path: target/*.war
   deploy:
     needs: Build
-    runs-on: ubuntu-20.04
+    runs-on: windows-latest
     steps:
      - name: Download the artifact
        uses: actions/download-artifact@v3
@@ -36,7 +36,7 @@ jobs:
 
      - name: List files to confirm download
        run: |
-          ls -alh
+          dir
 
 
       
