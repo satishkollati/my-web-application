@@ -27,7 +27,7 @@ jobs:
           path: target/*.war
   deploy:
     needs: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
      - name: Download the artifact
        uses: actions/download-artifact@v3
