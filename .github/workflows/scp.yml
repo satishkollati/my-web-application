@@ -8,7 +8,7 @@ on:
       default: '17'
 jobs:
   Build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
        - name: clone the repo
          uses: actions/checkout@v4
