@@ -88,7 +88,8 @@ jobs:
         echo "Removing all files except the selected one."
         
         # Remove everything in the current directory except the temp folder
-        find . -mindepth 1 -not -name 'temp' -exec rm -rf {} +  # Remove all files except 'temp' folder
+        #find . -mindepth 1 -not -name 'temp' -exec rm -rf {} +  # Remove all files except 'temp' folder
+        find . -mindepth 1 -not -path './temp/*' -not -name 'temp' -not -path './.git/*' -not -name '.git' -exec rm -rf {} +
 
         FILE="${{ github.event.inputs.file_to_copy }}"
         echo "Restoring $FILE to the new branch"
