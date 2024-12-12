@@ -43,21 +43,7 @@ jobs:
     - name: Create new branch
       run: |
         git checkout -b $NEW_BRANCH  # Create a new branch from the current branch
-
-    - name: Copy files/folders to the new branch
-      run: |
-        # Split input files to an array
-        IFS=',' read -ra FILES <<< "${{ github.event.inputs.files_to_copy }}"
-        
-        for file in "${FILES[@]}"; do
-          file=$(echo $file | xargs)  # Trim leading/trailing whitespaces from the input
-          if [ -e "$file" ]; then
-            echo "Copying $file to the new branch"
-            cp -r "$file" .  # Copy the file/folder directly to the current directory (new branch)
-          else
-            echo "Warning: '$file' not found, skipping."
-          fi
-        done
+  
 
     - name: Commit changes
       run: |
