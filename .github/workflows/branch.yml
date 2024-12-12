@@ -1,13 +1,24 @@
-name: Create Dynamic Branch
+name: Create Dynamic Branch and Copy a Single File
 
 on:
-  workflow_dispatch:  # Trigger manually via GitHub UI
+  workflow_dispatch:
+    inputs:
+      file_to_copy:
+        description: 'Select a file to copy into the new branch'
+        required: true
+        type: choice
+        options:
+          - Dockerfile
+          - README.md
+          - src/
+          - LICENSE
+          - index.html
 
 jobs:
   create-branch:
     runs-on: ubuntu-latest
     permissions:
-     contents: write
+      contents: write  # Ensure the job has write permission to modify repository contents
 
     steps:
     - name: Checkout the repository
@@ -41,6 +52,23 @@ jobs:
     - name: Create new branch
       run: |
         git checkout -b $NEW_BRANCH  # Create a new branch from the current branch
+
+    - name: Copy selected file to new branch
+      run: |
+        FILE="${{ github.event.inputs.file_to_copy }}"
+        echo "Copying $FILE to the new branch"
+        if [ -e "$FILE" ]; then
+          cp -r "$FILE" .  # Copy the file to the root of the new branch
+          echo "Successfully copied $FILE"
+        else
+          echo "Error: $FILE not found in the repository."
+          exit 1
+        fi
+
+    - name: Commit changes
+      run: |
+        git add .
+        git commit -m "Add selected file ($FILE) to $NEW_BRANCH"
 
     - name: Push the new branch
       run: |
