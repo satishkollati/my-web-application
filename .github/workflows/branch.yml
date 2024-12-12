@@ -53,12 +53,16 @@ jobs:
       run: |
         git checkout -b $NEW_BRANCH  # Create a new branch from the current branch
 
+    - name: Create temp folder to backup selected file
+      run: |
+        mkdir -p ./temp  # Ensure temp folder exists
+
     - name: Backup selected file
       run: |
         FILE="${{ github.event.inputs.file_to_copy }}"
         echo "Backing up $FILE to a temporary location"
         
-        # Ensure the file exists and copy it to a safe location (e.g., a temporary folder)
+        # Ensure the file exists and copy it to the temp folder
         if [ -e "$FILE" ]; then
           cp -r "$FILE" ./temp/  # Backup the selected file to the temp folder
           echo "$FILE successfully backed up."
@@ -69,24 +73,4 @@ jobs:
 
     - name: Remove all files from the new branch
       run: |
-        echo "Removing all files except the selected one."
-        rm -rf *  # Removes everything in the current directory
-        rm -rf ./temp  # Keep the temp folder safe for the backup
-
-    - name: Restore selected file to the new branch
-      run: |
-        FILE="${{ github.event.inputs.file_to_copy }}"
-        echo "Restoring $FILE to the new branch"
-        
-        # Restore the selected file from the backup
-        cp -r ./temp/$FILE .  # Restore the file from the temp folder to the root of the branch
-        rm -rf ./temp  # Clean up the temporary folder
-
-    - name: Commit changes
-      run: |
-        git add .
-        git commit -m "Add selected file ($FILE) to $NEW_BRANCH"
-
-    - name: Push the new branch
-      run: |
-        git push origin $NEW_BRANCH  # Push the new branch to the remote repository
+        echo "Removing all files except
