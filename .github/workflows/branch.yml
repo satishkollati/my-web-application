@@ -50,7 +50,7 @@ jobs:
         for file in "${FILES[@]}"; do
           file=$(echo $file | xargs)  # Trim leading/trailing whitespaces from the input
           if [ -e "$file" ]; then
-            cp -r "$file" "$NEW_BRANCH/"  # Copy file/folder to the new branch
+            cp -r "$file" "$GITHUB_WORKSPACE/$NEW_BRANCH/"  # Copy file/folder to the new branch
           else
             echo "Warning: '$file' not found, skipping."
           fi
