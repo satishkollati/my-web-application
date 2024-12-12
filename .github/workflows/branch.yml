@@ -73,4 +73,23 @@ jobs:
 
     - name: Remove all files from the new branch
       run: |
-        echo "Removing all files except
+        echo "Removing all files except the selected one."
+        rm -rf *  # Removes everything in the current directory, except the temp folder
+
+    - name: Restore selected file to the new branch
+      run: |
+        FILE="${{ github.event.inputs.file_to_copy }}"
+        echo "Restoring $FILE to the new branch"
+        
+        # Restore the selected file from the temp folder to the root of the branch
+        cp -r ./temp/$FILE .  # Restore the file from the temp folder to the root of the branch
+        rm -rf ./temp  # Clean up the temporary folder
+
+    - name: Commit changes
+      run: |
+        git add .
+        git commit -m "Add selected file ($FILE) to $NEW_BRANCH"
+
+    - name: Push the new branch
+      run: |
+        git push origin $NEW_BRANCH  # Push the new branch to the remote repository
