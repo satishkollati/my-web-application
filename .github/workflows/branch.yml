@@ -68,8 +68,7 @@ jobs:
           exit 1
         fi
 
-    - name: Backup selected file
-      run: |
+
         FILE="${{ github.event.inputs.file_to_copy }}"
         echo "Backing up $FILE to a temporary location"
         
@@ -86,15 +85,11 @@ jobs:
         echo "Files in temp folder after backup:"
         ls -al ./temp
 
-    - name: Remove all files from the new branch except the temp folder
-      run: |
         echo "Removing all files except the selected one."
         
         # Remove everything in the current directory except the temp folder
         find . -mindepth 1 -not -name 'temp' -exec rm -rf {} +  # Remove all files except 'temp' folder
 
-    - name: Restore selected file to the new branch
-      run: |
         FILE="${{ github.event.inputs.file_to_copy }}"
         echo "Restoring $FILE to the new branch"
         
