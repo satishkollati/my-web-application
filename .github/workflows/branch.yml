@@ -43,6 +43,7 @@ jobs:
     - name: Create new branch
       run: |
         git checkout -b $NEW_BRANCH  # Create a new branch from the current branch
+        mkdir -p "$GITHUB_WORKSPACE/temp"  # Ensure the target directory exists
 
     - name: Copy files/folders to the new branch
       run: |
@@ -50,7 +51,9 @@ jobs:
         for file in "${FILES[@]}"; do
           file=$(echo $file | xargs)  # Trim leading/trailing whitespaces from the input
           if [ -e "$file" ]; then
-            cp -r "$file" "$GITHUB_WORKSPACE/$NEW_BRANCH/"  # Copy file/folder to the new branch
+            cp -r "$file" "$GITHUB_WORKSPACE/temp/"  # Copy file/folder to the new branch
+            cp -r $GITHUB_WORKSPACE/temp/* .
+            rm -rf $GITHUB_WORKSPACE/temp/
           else
             echo "Warning: '$file' not found, skipping."
           fi
