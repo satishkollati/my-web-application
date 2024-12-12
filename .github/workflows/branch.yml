@@ -71,18 +71,35 @@ jobs:
           exit 1
         fi
 
-    - name: Remove all files from the new branch
+        # Debug: List files in the temp folder to confirm the backup
+        echo "Files in temp folder:"
+        ls -al ./temp
+
+    - name: Remove all files from the new branch except the temp folder
       run: |
         echo "Removing all files except the selected one."
-        rm -rf *  # Removes everything in the current directory, except the temp folder
+        
+        # Remove everything in the current directory except the temp folder
+        find . -mindepth 1 -not -name 'temp' -exec rm -rf {} +  # Remove all files except 'temp' folder
 
     - name: Restore selected file to the new branch
       run: |
         FILE="${{ github.event.inputs.file_to_copy }}"
         echo "Restoring $FILE to the new branch"
         
+        # Debug: Check if the file exists in the temp folder
+        echo "Files in temp folder before restoring:"
+        ls -al ./temp
+        
         # Restore the selected file from the temp folder to the root of the branch
-        cp -r ./temp/$FILE .  # Restore the file from the temp folder to the root of the branch
+        if [ -e "./temp/$FILE" ]; then
+          cp -r ./temp/$FILE .  # Restore the file from the temp folder to the root of the branch
+          echo "$FILE restored successfully."
+        else
+          echo "Error: $FILE not found in temp folder."
+          exit 1
+        fi
+        
         rm -rf ./temp  # Clean up the temporary folder
 
     - name: Commit changes
