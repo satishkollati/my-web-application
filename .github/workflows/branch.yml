@@ -57,6 +57,17 @@ jobs:
       run: |
         mkdir -p ./temp  # Ensure temp folder exists
 
+    - name: Debug Check if the selected file exists
+      run: |
+        FILE="${{ github.event.inputs.file_to_copy }}"
+        echo "Checking if $FILE exists in the repository"
+        if [ -e "$FILE" ]; then
+          echo "$FILE exists in the repository"
+        else
+          echo "Error: $FILE not found in the repository"
+          exit 1
+        fi
+
     - name: Backup selected file
       run: |
         FILE="${{ github.event.inputs.file_to_copy }}"
@@ -72,7 +83,7 @@ jobs:
         fi
 
         # Debug: List files in the temp folder to confirm the backup
-        echo "Files in temp folder:"
+        echo "Files in temp folder after backup:"
         ls -al ./temp
 
     - name: Remove all files from the new branch except the temp folder
