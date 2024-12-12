@@ -6,7 +6,8 @@ on:
 jobs:
   create-branch:
     runs-on: ubuntu-latest
-    permissions: write
+    permissions:
+     contents: write
 
     steps:
     - name: Checkout the repository
