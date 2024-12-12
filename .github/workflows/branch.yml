@@ -57,8 +57,14 @@ jobs:
       run: |
         FILE="${{ github.event.inputs.file_to_copy }}"
         echo "Copying $FILE to the new branch"
+        
+        # Check if the file exists
         if [ -e "$FILE" ]; then
-          cp -r "$FILE" .  # Copy the file to the root of the new branch
+          # Create a temporary directory and copy the file into it to avoid overwrite issues
+          mkdir -p $GITHUB_WORKSPACE/temp
+          cp -r "$FILE" "$GITHUB_WORKSPACE/temp/"  # Copy the file into the temporary directory
+          mv "$GITHUB_WORKSPACE/temp/$(basename $FILE)" .  # Move the file to the root of the new branch
+          rm -rf $GITHUB_WORKSPACE/temp  # Cleanup temporary directory
           echo "Successfully copied $FILE"
         else
           echo "Error: $FILE not found in the repository."
