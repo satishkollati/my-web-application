@@ -11,8 +11,7 @@ jobs:
   download-and-copy:
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read  # Required permission to push to the repository
+  
 
     steps:
       # Step 1: Checkout the main branch
