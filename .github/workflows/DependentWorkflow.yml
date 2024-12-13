@@ -17,13 +17,13 @@ jobs:
         uses: actions/checkout@v3
         with:
           ref: main  # Checkout the main branch to copy files there
-      
+      - run: mkdir ./downloaded-artifacts
         # Step 2: Download the artifact from the primary workflow
       - name: Download artifact from Primary Workflow
         uses: actions/upload-artifact@v3
         with:
           name: Model  # The artifact name that was uploaded in the primary workflow
-          path: .  # Directory to store downloaded files
+          path: ./downloaded-artifacts # Directory to store downloaded files
 
       # Step 3: Copy downloaded files to the main branch
       - name: Copy files to main branch
