@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       Source_Folder:
-        description: "Comma-separated list of branch/files (e.g. 'copybranch/Dockerfile,copybranch/src/config.json')"
+        description: "Comma-separated list of branch/files/folders (e.g. 'copybranch/Dockerfile,copybranch/src/config.json,copybranch/src/folder')"
         required: true
-        default: "copybranch/Dockerfile"
+        default: "copybranch/Dockerfile,copybranch/src/config.json"
       Target_Folder:
         description: "Network share path for the copied files (e.g. '\\\\network\\share\\target')"
         required: true
@@ -54,49 +54,77 @@ jobs:
             Write-Host "Validation directory already exists: $targetDir"
           }
 
-      # Step 5: Copy Files to Network Share
-      - name: Copy Files to Network Share
+      # Step 5: Copy Files/Folders to Network Share
+      - name: Copy Files/Folders to Network Share
         shell: pwsh
         run: |
            $targetDir = "${{ github.event.inputs.Target_Folder }}"
            # Split the comma-separated list of source paths
             $sourcePaths = "${{ github.event.inputs.Source_Folder }}" -split ","
             foreach ($sourcePath in $sourcePaths) {
-                # Split each source path into branch and file path
+                # Split each source path into branch and file/folder path
                 $parts = $sourcePath -split "/"
                 $branch = $parts[0]
                 $path = $parts[1]
-                # Log the branch and file to be processed
+                # Log the branch and path to be processed
                 Write-Host "Checking out branch: $branch"
                 
                 # Fetch and checkout the specified branch
                 git fetch origin $branch
                 git checkout $branch
-                # Get the list of files in the specified path (in case it's a folder)
-                $files = Get-ChildItem -Path $path -File
-                # Loop through each file in the path and copy it to the target folder
-                foreach ($file in $files) {
-                    $originalFileName = $file.FullName
+
+                # Check if the path is a file or directory
+                if (Test-Path $path -PathType Leaf) {
+                    # It's a file
+                    Write-Host "Copying file: $path"
+                    $originalFileName = $path
                     $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
                     
                     # Create a new unique name for the file
-                    $name = $file.BaseName + "-" + $myrev + $file.Extension
-                    
-                    # Log the file that's being copied
-                    Write-Host "Copying file: $originalFileName to $($targetDir)\$name"
-                    # Copy the file to the target folder with the new name
+                    $name = (Get-Item $originalFileName).BaseName + "-" + $myrev + (Get-Item $originalFileName).Extension
                     $targetFilePath = "$targetDir\$name"
+                    
+                    # Copy the file to the target folder
                     Copy-Item $originalFileName -Destination $targetFilePath -Force
                     # Verify that the file exists in the target folder
                     if (Test-Path $targetFilePath) {
-                        Write-Host "File copied successfully: $targetFilePath" -ForegroundColor Green
+                        Write-Host "File copied successfully: $targetFilePath"
                     } else {
                         Write-Host "Error: File was not copied to $targetFilePath"
                         exit 1  # Exit with error if file doesn't exist
                     }
                 }
+                elseif (Test-Path $path -PathType Container) {
+                    # It's a directory
+                    Write-Host "Copying directory: $path"
+                    # Get all files in the directory, including subdirectories
+                    $files = Get-ChildItem -Path $path -Recurse -File
+                    foreach ($file in $files) {
+                        $originalFileName = $file.FullName
+                        $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
+                        
+                        # Create a new unique name for the file
+                        $name = $file.BaseName + "-" + $myrev + $file.Extension
+                        $targetFilePath = "$targetDir\$name"
+                        
+                        # Log the file that's being copied
+                        Write-Host "Copying file: $originalFileName to $targetFilePath"
+                        # Copy the file to the target folder with the new name
+                        Copy-Item $originalFileName -Destination $targetFilePath -Force
+                        # Verify that the file exists in the target folder
+                        if (Test-Path $targetFilePath) {
+                            Write-Host "File copied successfully: $targetFilePath"
+                        } else {
+                            Write-Host "Error: File was not copied to $targetFilePath"
+                            exit 1  # Exit with error if file doesn't exist
+                        }
+                    }
+                } else {
+                    Write-Host "Error: The path $path is neither a valid file nor a directory."
+                    exit 1
+                }
             }
 
-           # List all files in the target folder
-           Write-Host "Listing all files in target folder:"
-           Get-ChildItem -Path $targetDir -File | ForEach-Object { Write-Host $_.Name }
+            # List all files in the target folder sorted by modification time (like `ls -ltr`)
+            Write-Host "Listing all files in target folder sorted by modification time:"
+            Get-ChildItem -Path $targetDir | Sort-Object LastWriteTime -Descending | Format-Table Name, Length, LastWriteTime
