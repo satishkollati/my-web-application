@@ -1,0 +1,40 @@
+name: Copy Files from Input Branch to Target Path
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: "Source branch to copy files from"
+        required: true
+        default: "develop"
+      source_path:
+        description: "Path to files or directory in the source branch"
+        required: true
+        default: "src"
+      target_path:
+        description: "Target path for copied files"
+        required: true
+        default: "target"
+
+jobs:
+  copy-files:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the input branch
+      - name: Checkout Source Branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.inputs.source_branch }}
+
+      # Step 2: Create the target directory
+      - name: Create Target Directory
+        run: mkdir -p ${{ github.event.inputs.target_path }}
+
+      # Step 3: Copy files from the source branch to the target path
+      - name: Copy Files
+        run: |
+          cp -r ${{ github.event.inputs.source_path }}/* ${{ github.event.inputs.target_path }}
+
+      # Step 4: Verify copied files
+      - name: Verify Copied Files
+        run: ls -la ${{ github.event.inputs.target_path }}
