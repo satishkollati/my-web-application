@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["Primary Workflow"]  # Trigger after the primary workflow completes
     types:
