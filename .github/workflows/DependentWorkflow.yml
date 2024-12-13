@@ -19,7 +19,7 @@ jobs:
           ref: main  # Checkout the main branch to copy files there
         # Step 2: Download the artifact from the primary workflow
       - name: Download artifact from Primary Workflow
-        uses: actions/upload-artifact@v3
+        uses: actions/download-artifact@v3
         with:
           name: Model  # The artifact name that was uploaded in the primary workflow
           path: . # Directory to store downloaded files
