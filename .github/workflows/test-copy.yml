@@ -89,7 +89,7 @@ jobs:
                     Copy-Item $originalFileName -Destination $targetFilePath -Force
                     # Verify that the file exists in the target folder
                     if (Test-Path $targetFilePath) {
-                        Write-Host "File copied successfully: $targetFilePath"
+                        Write-Host "File copied successfully: $targetFilePath" -ForegroundColor Green
                     } else {
                         Write-Host "Error: File was not copied to $targetFilePath"
                         exit 1  # Exit with error if file doesn't exist
@@ -97,6 +97,6 @@ jobs:
                 }
             }
 
-            # List all files in the target folder sorted by modification time (like `ls -ltr`)
-            Write-Host "Listing all files in target folder sorted by modification time:"
-            Get-ChildItem -Path $targetDir -File | Sort-Object LastWriteTime -Descending | Format-Table Name, Length, LastWriteTime
+           # List all files in the target folder
+           Write-Host "Listing all files in target folder:"
+           Get-ChildItem -Path $targetDir -File | ForEach-Object { Write-Host $_.Name }
