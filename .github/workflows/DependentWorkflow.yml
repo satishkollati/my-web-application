@@ -19,24 +19,21 @@ jobs:
           ref: main  # Ensure you're on the main branch
 
       # Step 2: Create a directory to store the downloaded artifact
-      - name: Create directory for downloaded artifacts
-        run: mkdir -p ./downloaded-artifacts
+      
 
       # Step 3: Download artifact from primary workflow
       - name: Download artifact from Primary Workflow
         uses: actions/download-artifact@v3
         with:
           name: Model  # Must match the artifact name in the primary workflow
-          path: ./downloaded-artifacts  # Directory where the artifact will be stored
+          path: .  # Directory where the artifact will be stored
 
       # Step 4: Verify the artifact is downloaded
       - name: Verify downloaded files
-        run: ls -l ./downloaded-artifacts
+        run: ls -l .
 
       # Step 5: Copy the files to the main branch
-      - name: Copy files to main branch
-        run: |
-          cp -r ./downloaded-artifacts/* .
+      
 
       # Step 6: Commit the changes to the main branch
       - name: Commit changes
