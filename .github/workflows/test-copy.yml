@@ -1,0 +1,142 @@
+name: Copy Files to Network Share, Wait for Approval, and Commit to Main Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      Source_Folder:
+        description: "Comma-separated list of branch/files (e.g. 'copybranch/Dockerfile,copybranch/src/config.json')"
+        required: true
+        default: "copybranch/Dockerfile,copybranch/src/config.json"
+      Target_Folder:
+        description: "Network share path for the copied files (e.g. '\\\\network\\share\\target')"
+        required: true
+        default: "temp"
+
+jobs:
+  copy-to-network-share:
+    runs-on: windows-latest  # Windows runner
+    steps:
+      # Step 1: Checkout the source branch
+      - name: Checkout Source Branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - name: Create Main Directory on Network Share
+        shell: pwsh
+        run: |
+          $targetDir = "${{ github.event.inputs.Target_Folder }}"
+          if (!(Test-Path $targetDir)) {
+            Write-Host "Creating Main directory: $targetDir"
+            New-Item -ItemType Directory -Path $targetDir 
+          } else {
+            Write-Host "Main directory already exists: $targetDir"
+          }  
+
+      # Step 3: Delete files from the target directory
+      - name: Delete Existing Files from Directory
+        shell: pwsh
+        run: |
+          $targetDir = "${{ github.event.inputs.Target_Folder }}"
+          Write-Host "Deleting existing files in Main directory: $targetDir"
+          Get-ChildItem -Path $targetDir -Recurse | Remove-Item -Force -Recurse
+
+      # Step 2: Create the target directory on the network share if it doesn't exist
+      - name: Create Validation Directory on Network Share
+        shell: pwsh
+        run: |
+          $targetDir = "${{ github.event.inputs.Target_Folder }}/test-validation/"
+          if (!(Test-Path $targetDir)) {
+            Write-Host "Creating Validation directory: $targetDir"
+            New-Item -ItemType Directory -Path $targetDir 
+          } else {
+            Write-Host "Validation directory already exists: $targetDir"
+          }
+
+      # Step 4: Copy files from the source branches to the network share
+      - name: Copy Files to Network Share
+        shell: pwsh
+        run: |
+           # Split the comma-separated list of source paths
+           $sourcePaths = "${{ github.event.inputs.Source_Folder }}" -split ","
+
+           foreach ($sourcePath in $sourcePaths) {
+           # Split each source path into branch and file path
+           $parts = $sourcePath -split "/"
+           $branch = $parts[0]
+           $path = $parts[1]
+
+        # Log the branch and file to be processed
+           Write-Host "Checking out branch: $branch"
+    
+    # Fetch and checkout the specified branch
+           git fetch origin $branch
+           git checkout $branch
+
+    # Get the list of files in the specified path (in case it's a folder)
+           $files = Get-ChildItem -Path $path -File
+
+    # Loop through each file in the path and copy it to the target folder
+           foreach ($file in $files) {
+        $originalFileName = $file.FullName
+        $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
+        
+        # Create a new unique name for the file
+        $name = $file.BaseName + "-" + $myrev + $file.Extension
+        
+        # Log the file that's being copied
+        Write-Host "Copying file: $originalFileName to $($github.event.inputs.Target_Folder)\$name"
+
+        # Copy the file to the target folder with the new name
+        Copy-Item $originalFileName -Destination "$($github.event.inputs.Target_Folder)\$name" -Force
+    }
+}
+
+      # Step 5: Wait for approval to continue
+      - name: Wait for manual approval
+        run: echo "Waiting for manual approval to proceed to the next job."
+        shell: pwsh
+        continue-on-error: true
+
+  copy-to-main:
+    needs: copy-to-network-share
+    runs-on: self-hosted  # Self-hosted runner
+
+    steps:
+      # Step 1: Checkout the main branch
+      - name: Checkout Main Branch
+        uses: actions/checkout@v3
+        with:
+          ref: main
+
+      # Step 2: Copy files from the network share to the main branch directory
+      - name: Copy Files from Network Share to Main Branch
+        shell: pwsh
+        run: |
+          $networkSharePath = "${{ github.event.inputs.Target_Folder }}"
+          $mainBranchDir = "$(pwd)"  # Local directory for the main branch
+
+          # Copy files from the network share to the local repository directory
+          Write-Host "Copying files from network share: $networkSharePath to $mainBranchDir"
+          Copy-Item "$networkSharePath\*" -Destination $mainBranchDir -Recurse -Force
+
+      # Step 3: Commit and Push to Main Branch
+      - name: Commit and Push to Main Branch
+        run: |
+          git fetch origin main
+          git checkout main
+
+          # Add copied files to git
+          git add .
+
+          # Commit the changes
+          git commit -m "Copy files from network share to main branch"
+
+          # Push the changes to the main branch
+          git push origin main
+
+      # Step 4: Verify the contents in the main branch (optional)
+      - name: Verify Target Path Contents
+        shell: pwsh
+        run: |
+          Get-ChildItem ${{ github.event.inputs.Target_Folder }}
