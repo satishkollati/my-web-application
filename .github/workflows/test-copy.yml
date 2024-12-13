@@ -88,7 +88,8 @@ jobs:
                     Write-Host "Copying file: $originalFileName to $($github.event.inputs.Target_Folder)\$name"
 
                     # Copy the file to the target folder with the new name
-                    Copy-Item $originalFileName -Destination "${{ github.event.inputs.Target_Folder }}\$name" -Force
+                    $targetFolder = "${{ github.event.inputs.Target_Folder }}"
+                    Copy-Item $originalFileName -Destination "$targetFolder\$name" -Force
                     # Verify that the file exists in the target folder
                       $targetFilePath = "$($github.event.inputs.Target_Folder)\$name"
                       if (Test-Path $targetFilePath) {
