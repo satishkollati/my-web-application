@@ -62,7 +62,8 @@ jobs:
                 # Split each source path into branch and file path
                 $parts = $sourcePath -split "/"
                 $branch = $parts[0]
-                $path = $parts[1]
+                # $path = $parts[1]
+                $path = $parts[1..($parts.Length - 1)] -join "/"
                 # Log the branch and file to be processed
                 Write-Host "Checking out branch: $branch"
                 
