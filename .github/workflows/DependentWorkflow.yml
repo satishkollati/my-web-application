@@ -1,35 +1,43 @@
-name: Secondary Workflow
-
 on:
-  workflow_dispatch:
   workflow_run:
-    workflows: ["Copy Files to Network Share, Wait for Approval, and Commit to Main Branch"]  # Name of the primary workflow
+    workflows: ["Primary Workflow"]  # Trigger after the primary workflow completes
     types:
-      - completed  # Trigger after the primary workflow completes
+      - completed
 
 jobs:
   download-and-copy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Permission to push changes to the repo
 
     steps:
-      # Step 1: Checkout the main branch
+      # Step 1: Checkout main branch
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
-          ref: main  # Checkout the main branch to copy files there
-        # Step 2: Download the artifact from the primary workflow
+          ref: main  # Ensure you're on the main branch
+
+      # Step 2: Create a directory to store the downloaded artifact
+      - name: Create directory for downloaded artifacts
+        run: mkdir -p ./downloaded-artifacts
+
+      # Step 3: Download artifact from primary workflow
       - name: Download artifact from Primary Workflow
         uses: actions/download-artifact@v3
         with:
-          name: Model  # The artifact name that was uploaded in the primary workflow
-          path: . # Directory to store downloaded files
+          name: Model  # Must match the artifact name in the primary workflow
+          path: ./downloaded-artifacts  # Directory where the artifact will be stored
 
-     # Verify downloaded files
+      # Step 4: Verify the artifact is downloaded
       - name: Verify downloaded files
+        run: ls -l ./downloaded-artifacts
+
+      # Step 5: Copy the files to the main branch
+      - name: Copy files to main branch
         run: |
-          ls -l 
-         
-      # Step 4: Commit the changes to the main branch
+          cp -r ./downloaded-artifacts/* .
+
+      # Step 6: Commit the changes to the main branch
       - name: Commit changes
         run: |
           git config --global user.name "github-actions[bot]"
