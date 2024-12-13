@@ -1,17 +1,18 @@
-name: Copy Files from Input Branch to Target Path
+name: Copy Files or Directory from Input Branch
+
 on:
   workflow_dispatch:
     inputs:
       source_branch:
-        description: "Source branch to copy files from"
+        description: "Source branch to copy files or directory from"
         required: true
         default: "develop"
       source_path:
-        description: "Path to files or directory in the source branch"
+        description: "Path to a file or directory in the source branch"
         required: true
         default: "src"
       target_path:
-        description: "Target path for copied files"
+        description: "Target path for the copied files or directory"
         required: true
         default: "target"
 
@@ -20,21 +21,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the input branch
+      # Step 1: Checkout the source branch
       - name: Checkout Source Branch
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.inputs.source_branch }}
 
-      # Step 2: Create the target directory
+      # Step 2: Create target directory
       - name: Create Target Directory
         run: mkdir -p ${{ github.event.inputs.target_path }}
 
-      # Step 3: Copy files from the source branch to the target path
-      - name: Copy Files
+      # Step 3: Copy files or directory dynamically
+      - name: Copy File or Directory
         run: |
-          cp -r ${{ github.event.inputs.source_path }}/* ${{ github.event.inputs.target_path }}
+          if [ -f "${{ github.event.inputs.source_path }}" ]; then
+            # Input is a file
+            cp "${{ github.event.inputs.source_path }}" ${{ github.event.inputs.target_path }}
+          elif [ -d "${{ github.event.inputs.source_path }}" ]; then
+            # Input is a directory
+            cp -r "${{ github.event.inputs.source_path }}"/* ${{ github.event.inputs.target_path }}
+          else
+            echo "The specified source path does not exist."
+            exit 1
+          fi
 
-      # Step 4: Verify copied files
-      - name: Verify Copied Files
+      # Step 4: Verify copied files or directory
+      - name: Verify Target Path Contents
         run: ls -la ${{ github.event.inputs.target_path }}
