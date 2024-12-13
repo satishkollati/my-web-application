@@ -81,7 +81,7 @@ jobs:
               # Loop through each file in the path and copy it to the target folder
               foreach ($file in $files) {
                   $originalFileName = $file.FullName
-                  $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
+                  $myrev = $env:GITHUB_ID # Use GitHub Run ID
                   
                   # Create a new unique name for the file
                   $name = $file.BaseName + "-" + $myrev + $file.Extension
