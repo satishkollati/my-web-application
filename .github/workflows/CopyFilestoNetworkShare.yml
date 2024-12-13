@@ -198,5 +198,14 @@ jobs:
            # List all files in the target folder
            Write-Host "Listing all files in target folder:"
            Get-ChildItem -Path $targetDir -File | ForEach-Object { Write-Host $_.Name }
+           
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4.4.3
+        with:
+          name: Model
+          path: temp/
+          retention-days: 1
+          
+        
       
       
