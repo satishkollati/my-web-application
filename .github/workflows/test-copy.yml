@@ -6,7 +6,7 @@ on:
       Source_Folder:
         description: "Comma-separated list of branch/files (e.g. 'copybranch/Dockerfile,copybranch/src/config.json')"
         required: true
-        default: "copybranch/Dockerfile,copybranch/src/config.json"
+        default: "copybranch/Dockerfile"
       Target_Folder:
         description: "Network share path for the copied files (e.g. '\\\\network\\share\\target')"
         required: true
@@ -58,6 +58,7 @@ jobs:
       - name: Copy Files to Network Share
         shell: pwsh
         run: |
+           $targetDir = "${{ github.event.inputs.Target_Folder }}"
            # Split the comma-separated list of source paths
             $sourcePaths = "${{ github.event.inputs.Source_Folder }}" -split ","
             foreach ($sourcePath in $sourcePaths) {
