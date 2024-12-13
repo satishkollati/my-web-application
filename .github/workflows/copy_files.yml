@@ -3,14 +3,10 @@ name: Copy Files or Directories from Input Branch
 on:
   workflow_dispatch:
     inputs:
-      source_branch:
-        description: "Source branch to copy files or directories from"
-        required: true
-        default: "copybranch"
       source_paths:
-        description: "Comma-separated list of files or directories in the source branch"
+        description: "Comma-separated list of branch/file or branch/folder (e.g. 'branch1/Dockerfile,branch2/src')"
         required: true
-        default: "Dockerfile,src,testcopy,test2"
+        default: "copybranch/Dockerfile,copybranch/src,copybranch/testcopy,copybranch/test2"  # Example of input format
       target_path:
         description: "Target path for the copied files or directories"
         required: true
@@ -18,40 +14,52 @@ on:
 
 jobs:
   copy-files:
-    runs-on: windows-latest  # Changed to Windows runner
+    runs-on: windows-latest  # Windows runner
 
     steps:
-      # Step 1: Checkout the source branch
-      - name: Checkout Source Branch
+      # Step 1: Checkout the target branch (just in case you need it for the target path)
+      - name: Checkout Target Branch
         uses: actions/checkout@v3
         with:
-          ref: ${{ github.event.inputs.source_branch }}
+          ref: ${{ github.head_ref || github.ref }}
 
       # Step 2: Create target directory
       - name: Create Target Directory
         run: New-Item -Path ${{ github.event.inputs.target_path }} -ItemType Directory -Force
 
-      # Step 3: Copy multiple files or directories using PowerShell
+      # Step 3: Copy files or directories from multiple branches
       - name: Copy Files or Directories
         shell: pwsh
         run: |
           # Convert the comma-separated list to an array
           $sourcePaths = "${{ github.event.inputs.source_paths }}" -split ","
-          
+
           # Loop through the paths and copy files or directories
           foreach ($sourcePath in $sourcePaths) {
-            if (Test-Path $sourcePath -PathType Leaf) {
+            # Split the input into branch and path (branch/path)
+            $parts = $sourcePath -split "/"
+            $branch = $parts[0]
+            $path = $parts[1]
+            
+            Write-Host "Checking out branch: $branch"
+            
+            # Checkout the branch
+            git fetch origin $branch
+            git checkout $branch
+
+            # Check if the path is a file or directory
+            if (Test-Path $path -PathType Leaf) {
               # Input is a file
-              Write-Host "Copying file: $sourcePath"
-              Copy-Item $sourcePath -Destination ${{ github.event.inputs.target_path }} -Force
+              Write-Host "Copying file: $path"
+              Copy-Item $path -Destination ${{ github.event.inputs.target_path }} -Force
             }
-            elseif (Test-Path $sourcePath -PathType Container) {
+            elseif (Test-Path $path -PathType Container) {
               # Input is a directory
-              Write-Host "Copying directory: $sourcePath"
-              Copy-Item $sourcePath -Destination ${{ github.event.inputs.target_path }} -Recurse -Force
+              Write-Host "Copying directory: $path"
+              Copy-Item $path -Destination ${{ github.event.inputs.target_path }} -Recurse -Force
             }
             else {
-              Write-Host "The specified source path $sourcePath does not exist."
+              Write-Host "The specified source path $path does not exist in branch $branch."
               exit 1
             }
           }
