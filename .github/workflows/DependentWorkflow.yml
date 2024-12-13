@@ -1,7 +1,7 @@
 name: Secondary Workflow
 
 on:
-  workflow_dispatch: # Allows manual trigger of the workflow
+  workflow_dispatch:
   workflow_run:
     workflows: ["Copy Files to Network Share, Wait for Approval, and Commit to Main Branch"]  # Name of the primary workflow
     types:
@@ -11,35 +11,27 @@ jobs:
   download-and-copy:
     runs-on: ubuntu-latest
 
-  
-
     steps:
       # Step 1: Checkout the main branch
       - name: Checkout main branch
         uses: actions/checkout@v3
         with:
           ref: main  # Checkout the main branch to copy files there
-
-      # Step 2: Create a directory for downloaded artifacts
-      - name: Create directory for downloaded artifacts
-        run: mkdir -p ./downloaded-artifacts/
-
-      # Step 3: Download the artifact from the primary workflow
+      - run: mkdir -p ./downloaded-artifacts/
+      
+        # Step 2: Download the artifact from the primary workflow
       - name: Download artifact from Primary Workflow
-        uses: actions/download-artifact@v3
+        uses: actions/upload-artifact@v3
         with:
           name: Model  # The artifact name that was uploaded in the primary workflow
           path: ./downloaded-artifacts  # Directory to store downloaded files
 
-      # Step 4: Copy downloaded files to the main branch
+      # Step 3: Copy downloaded files to the main branch
       - name: Copy files to main branch
         run: |
-          # Ensure the downloaded files exist
-          ls -l ./downloaded-artifacts/
-          # Copy the downloaded files to the current directory (main branch)
+          # Copy the downloaded files to the target location in the repository
           cp -r ./downloaded-artifacts/* .  # This copies the files from the downloaded artifact to the main branch
-
-      # Step 5: Commit the changes to the main branch
+      # Step 4: Commit the changes to the main branch
       - name: Commit changes
         run: |
           git config --global user.name "github-actions[bot]"
