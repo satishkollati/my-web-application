@@ -13,8 +13,11 @@ on:
         default: "temp"
 
 jobs:
-  copy-to-network-share:
+################# QA Deplpyment ######################
+  copy-to-QA-network-share:
     runs-on: windows-latest  # Windows runner
+    environment: 
+      name: qa
     steps:
       # Step 1: Checkout the source branch
       - name: Checkout Source Branch
@@ -97,3 +100,102 @@ jobs:
            # List all files in the target folder
            Write-Host "Listing all files in target folder:"
            Get-ChildItem -Path $targetDir -File | ForEach-Object { Write-Host $_.Name }
+           
+  copy-to-QA-Approval:
+   runs-on: ubuntu-latest  
+   environment:
+     name: qa-approval
+   needs: copy-to-QA-network-share
+   steps:
+    - name: After Approval
+      run: echo "Approval received for qa env! proceeding to next step."
+      
+################# Prod Deplpyment ######################
+  copy-to-Prod-network-share:
+    runs-on: windows-latest  # Windows runner
+    environment: 
+      name: Prod
+    steps:
+      # Step 1: Checkout the source branch
+      - name: Checkout Source Branch
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      # Step 2: Create Main Directory on Network Share
+      - name: Create Main Directory on Network Share
+        shell: pwsh
+        run: |
+          $targetDir = "${{ github.event.inputs.Target_Folder }}"
+          if (!(Test-Path $targetDir)) {
+            Write-Host "Creating Main directory: $targetDir"
+            New-Item -ItemType Directory -Path $targetDir
+          } else {
+            Write-Host "Main directory already exists: $targetDir"
+          }
+      # Step 3: Delete Existing Files from Target Directory
+      - name: Delete Existing Files from Directory
+        shell: pwsh
+        run: |
+          $targetDir = "${{ github.event.inputs.Target_Folder }}"
+          Write-Host "Deleting existing files in Main directory: $targetDir"
+          Get-ChildItem -Path $targetDir -Recurse | Remove-Item -Force -Recurse
+      # Step 4: Create Validation Directory on Network Share
+      - name: Create Validation Directory on Network Share
+        shell: pwsh
+        run: |
+          $targetDir = "${{ github.event.inputs.Target_Folder }}\test-validation"
+          if (!(Test-Path $targetDir)) {
+            Write-Host "Creating Validation directory: $targetDir"
+            New-Item -ItemType Directory -Path $targetDir
+          } else {
+            Write-Host "Validation directory already exists: $targetDir"
+          }
+      # Step 5: Copy Files to Network Share
+      - name: Copy Files to Network Share
+        shell: pwsh
+        run: |
+           $targetDir = "${{ github.event.inputs.Target_Folder }}"
+           # Split the comma-separated list of source paths
+            $sourcePaths = "${{ github.event.inputs.Source_Folder }}" -split ","
+            foreach ($sourcePath in $sourcePaths) {
+                # Split each source path into branch and file path
+                $parts = $sourcePath -split "/"
+                $branch = $parts[0]
+                # $path = $parts[1]
+                $path = $parts[1..($parts.Length - 1)] -join "/"
+                # Log the branch and file to be processed
+                Write-Host "Checking out branch: $branch"
+                
+                # Fetch and checkout the specified branch
+                git fetch origin $branch
+                git checkout $branch
+                # Get the list of files in the specified path (in case it's a folder)
+                $files = Get-ChildItem -Path $path -File
+                # Loop through each file in the path and copy it to the target folder
+                foreach ($file in $files) {
+                    $originalFileName = $file.FullName
+                    $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
+                    
+                    # Create a new unique name for the file
+                    $name = $file.BaseName + "-" + $myrev + $file.Extension
+                    
+                    # Log the file that's being copied
+                    Write-Host "Copying file: $originalFileName to $($targetDir)\$name"
+                    # Copy the file to the target folder with the new name
+                    $targetFilePath = "$targetDir\$name"
+                    Copy-Item $originalFileName -Destination $targetFilePath -Force
+                    # Verify that the file exists in the target folder
+                    if (Test-Path $targetFilePath) {
+                        Write-Host "File copied successfully: $targetFilePath" -ForegroundColor Green
+                    } else {
+                        Write-Host "Error: File was not copied to $targetFilePath"
+                        exit 1  # Exit with error if file doesn't exist
+                    }
+                }
+            }
+           # List all files in the target folder
+           Write-Host "Listing all files in target folder:"
+           Get-ChildItem -Path $targetDir -File | ForEach-Object { Write-Host $_.Name }
+      
+      
