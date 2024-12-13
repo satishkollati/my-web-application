@@ -19,7 +19,7 @@ jobs:
 
       # Step 2: Download the artifact from the primary workflow
       - name: Download artifact from Primary Workflow
-        uses: actions/download-artifact@v4.1.8
+        uses: actions/download-artifact@v4
         with:
           name: Model  # The artifact name that was uploaded in the primary workflow
           path: ./downloaded-artifacts  # Directory to store downloaded files
