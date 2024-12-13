@@ -1,6 +1,7 @@
 name: Secondary Workflow
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["Copy Files to Network Share, Wait for Approval, and Commit to Main Branch"]  # Name of the primary workflow
     types:
