@@ -6,7 +6,7 @@ on:
       Source_Folder:
         description: "Comma-separated list of branch/files (e.g. 'copybranch/Dockerfile,copybranch/src/config.json')"
         required: true
-        default: "copybranch/Dockerfile,copybranch/src/config.json"
+        default: "copybranch/Dockerfile"
       Target_Folder:
         description: "Network share path for the copied files (e.g. '\\\\network\\share\\target')"
         required: true
