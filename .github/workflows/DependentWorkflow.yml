@@ -23,7 +23,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: Model  # The artifact name that was uploaded in the primary workflow
-          path: ./downloaded-artifacts # Directory to store downloaded files
+          path: ./downloaded-artifacts/ # Directory to store downloaded files
 
       # Step 3: Copy downloaded files to the main branch
       - name: Copy files to main branch
