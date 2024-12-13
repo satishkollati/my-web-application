@@ -39,7 +39,7 @@ jobs:
             cp "${{ github.event.inputs.source_path }}" ${{ github.event.inputs.target_path }}
           elif [ -d "${{ github.event.inputs.source_path }}" ]; then
             # Input is a directory
-            cp -r "${{ github.event.inputs.source_path }}"/* ${{ github.event.inputs.target_path }}
+            cp -r "${{ github.event.inputs.source_path }}" ${{ github.event.inputs.target_path }}
           else
             echo "The specified source path does not exist."
             exit 1
