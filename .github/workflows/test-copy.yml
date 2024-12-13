@@ -22,18 +22,19 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
+      # Step 2: Create Main Directory on Network Share
       - name: Create Main Directory on Network Share
         shell: pwsh
         run: |
           $targetDir = "${{ github.event.inputs.Target_Folder }}"
           if (!(Test-Path $targetDir)) {
             Write-Host "Creating Main directory: $targetDir"
-            New-Item -ItemType Directory -Path $targetDir 
+            New-Item -ItemType Directory -Path $targetDir
           } else {
             Write-Host "Main directory already exists: $targetDir"
-          }  
+          }
 
-      # Step 3: Delete files from the target directory
+      # Step 3: Delete Existing Files from Target Directory
       - name: Delete Existing Files from Directory
         shell: pwsh
         run: |
@@ -41,41 +42,37 @@ jobs:
           Write-Host "Deleting existing files in Main directory: $targetDir"
           Get-ChildItem -Path $targetDir -Recurse | Remove-Item -Force -Recurse
 
-      # Step 2: Create the target directory on the network share if it doesn't exist
+      # Step 4: Create Validation Directory on Network Share
       - name: Create Validation Directory on Network Share
         shell: pwsh
         run: |
-          $targetDir = "${{ github.event.inputs.Target_Folder }}/test-validation/"
+          $targetDir = "${{ github.event.inputs.Target_Folder }}\test-validation"
           if (!(Test-Path $targetDir)) {
             Write-Host "Creating Validation directory: $targetDir"
-            New-Item -ItemType Directory -Path $targetDir 
+            New-Item -ItemType Directory -Path $targetDir
           } else {
             Write-Host "Validation directory already exists: $targetDir"
           }
 
-      # Step 4: Copy files from the source branches to the network share
+      # Step 5: Copy Files to Network Share
       - name: Copy Files to Network Share
         shell: pwsh
         run: |
            # Split the comma-separated list of source paths
             $sourcePaths = "${{ github.event.inputs.Source_Folder }}" -split ","
-
             foreach ($sourcePath in $sourcePaths) {
                 # Split each source path into branch and file path
                 $parts = $sourcePath -split "/"
                 $branch = $parts[0]
                 $path = $parts[1]
-
                 # Log the branch and file to be processed
                 Write-Host "Checking out branch: $branch"
                 
                 # Fetch and checkout the specified branch
                 git fetch origin $branch
                 git checkout $branch
-
                 # Get the list of files in the specified path (in case it's a folder)
                 $files = Get-ChildItem -Path $path -File
-
                 # Loop through each file in the path and copy it to the target folder
                 foreach ($file in $files) {
                     $originalFileName = $file.FullName
@@ -85,20 +82,20 @@ jobs:
                     $name = $file.BaseName + "-" + $myrev + $file.Extension
                     
                     # Log the file that's being copied
-                    Write-Host "Copying file: $originalFileName to $($github.event.inputs.Target_Folder)\$name"
-
+                    Write-Host "Copying file: $originalFileName to $($targetDir)\$name"
                     # Copy the file to the target folder with the new name
-                    $targetFilePath = "$($github.event.inputs.Target_Folder)\$name"
+                    $targetFilePath = "$targetDir\$name"
                     Copy-Item $originalFileName -Destination $targetFilePath -Force
                     # Verify that the file exists in the target folder
-                      if (Test-Path $targetFilePath) {
-                          Write-Host "File copied successfully: $targetFilePath"
-                      } else {
-                          Write-Host "Error: File was not copied to $targetFilePath"
-                          exit 1  # Exit with error if file doesn't exist
-                      }
+                    if (Test-Path $targetFilePath) {
+                        Write-Host "File copied successfully: $targetFilePath"
+                    } else {
+                        Write-Host "Error: File was not copied to $targetFilePath"
+                        exit 1  # Exit with error if file doesn't exist
+                    }
                 }
             }
+
             # List all files in the target folder sorted by modification time (like `ls -ltr`)
             Write-Host "Listing all files in target folder sorted by modification time:"
-            Get-ChildItem -Path $github.event.inputs.Target_Folder -File | Sort-Object LastWriteTime -Descending | Format-Table Name, Length, LastWriteTime
+            Get-ChildItem -Path $targetDir -File | Sort-Object LastWriteTime -Descending | Format-Table Name, Length, LastWriteTime
