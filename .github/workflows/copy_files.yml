@@ -10,7 +10,7 @@ on:
       source_paths:
         description: "Comma-separated list of files or directories in the source branch"
         required: true
-        default: "src,file1.txt,dir1"
+        default: "Dockerfile,src,testcopy,test2"
       target_path:
         description: "Target path for the copied files or directories"
         required: true
@@ -18,7 +18,7 @@ on:
 
 jobs:
   copy-files:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # Changed to Windows runner
 
     steps:
       # Step 1: Checkout the source branch
@@ -29,30 +29,35 @@ jobs:
 
       # Step 2: Create target directory
       - name: Create Target Directory
-        run: mkdir -p ${{ github.event.inputs.target_path }}
+        run: New-Item -Path ${{ github.event.inputs.target_path }} -ItemType Directory -Force
 
-      # Step 3: Copy multiple files or directories
+      # Step 3: Copy multiple files or directories using PowerShell
       - name: Copy Files or Directories
+        shell: pwsh
         run: |
           # Convert the comma-separated list to an array
-          IFS=',' read -r -a source_paths <<< "${{ github.event.inputs.source_paths }}"
+          $sourcePaths = "${{ github.event.inputs.source_paths }}" -split ","
           
           # Loop through the paths and copy files or directories
-          for source_path in "${source_paths[@]}"; do
-            if [ -f "$source_path" ]; then
+          foreach ($sourcePath in $sourcePaths) {
+            if (Test-Path $sourcePath -PathType Leaf) {
               # Input is a file
-              echo "Copying file: $source_path"
-              cp "$source_path" ${{ github.event.inputs.target_path }}
-            elif [ -d "$source_path" ]; then
+              Write-Host "Copying file: $sourcePath"
+              Copy-Item $sourcePath -Destination ${{ github.event.inputs.target_path }} -Force
+            }
+            elseif (Test-Path $sourcePath -PathType Container) {
               # Input is a directory
-              echo "Copying directory: $source_path"
-              cp -r "$source_path" ${{ github.event.inputs.target_path }}
-            else
-              echo "The specified source path $source_path does not exist."
+              Write-Host "Copying directory: $sourcePath"
+              Copy-Item $sourcePath -Destination ${{ github.event.inputs.target_path }} -Recurse -Force
+            }
+            else {
+              Write-Host "The specified source path $sourcePath does not exist."
               exit 1
-            fi
-          done
+            }
+          }
 
       # Step 4: Verify copied files or directories
       - name: Verify Target Path Contents
-        run: ls -la ${{ github.event.inputs.target_path }}
+        shell: pwsh
+        run: |
+          Get-ChildItem ${{ github.event.inputs.target_path }}
