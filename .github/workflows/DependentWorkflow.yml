@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # Required permission to push to the repository
+      contents: read  # Required permission to push to the repository
 
     steps:
       # Step 1: Checkout the main branch
