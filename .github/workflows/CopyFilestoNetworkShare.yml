@@ -113,6 +113,7 @@ jobs:
 ################# Prod Deplpyment ######################
   copy-to-Prod-network-share:
     runs-on: windows-latest  # Windows runner
+    needs: copy-to-QA-Approval
     environment: 
       name: Prod
     steps:
