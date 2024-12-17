@@ -34,58 +34,36 @@ jobs:
         run: |
           git checkout -b $BRANCH_NAME  # Create a new branch based on FSB
 
-      # Step 5: Debugging to list all files in the latest commit to check for 'test.txt'
+      # Step 5: Debugging to list all files in the latest commit to check for changes
       - name: List files in the latest commit
         run: |
           echo "Files in the latest commit:"
           git ls-tree --name-only HEAD
-          
+
       # Step 6: List the changed or newly added files in FSB (between last commit and current)
       - name: Get changed files
         id: get_changed_files
         run: |
-          # Fetch the latest changes and detect modified/new files
           git fetch --unshallow || echo "Not a shallow repository, proceeding with normal diff"
-          
-          # List the changed files in the latest commit on FSB
+          # Get the list of changed files in the last commit
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found or shallow repo")
-          
-          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
-          # Debugging: List all files that are in the working directory (new file check)
-          echo "Files in working directory:"
-          ls -la
-
-      # Step 7: Reset to relevant changes
-      - name: Reset to relevant changes
+      # Step 7: Ensure all files are staged (including new files)
+      - name: Stage all files
         run: |
-          # Reset the repository so that we are only working with the files changed in the last commit
-          git reset --hard HEAD~1  # Go back one commit to reset the working directory
-
-          # Checkout only the files that were changed or newly added
-          for FILE in $CHANGED_FILES; do
-            if [ -f "$FILE" ]; then
-              echo "Checking out file: $FILE"
-              git checkout HEAD -- $FILE
-            else
-              echo "File $FILE does not exist in the current commit"
-            fi
-          done
-          
-          # Stage the changes for commit
-          git add .
-          
-          # Debugging: Check the status to ensure files are staged
+          git add . || echo "No changes found to stage"
           git status
 
       # Step 8: Commit and push the new branch (only if changes exist)
       - name: Commit and push new branch
         run: |
-          # Check if there are staged changes before committing
+          # Ensure changes are staged
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "Create new feature branch with only modified and new files"
+            git commit -m "Create new feature branch with changes from .github/workflows/Branch.yml"
             git push origin $BRANCH_NAME
           fi
+
