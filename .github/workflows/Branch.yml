@@ -34,7 +34,7 @@ jobs:
         run: |
           git checkout -b $BRANCH_NAME  # Create a new branch based on FSB
 
-      # Step 5: Debugging to list all files in the latest commit to check for changes
+      # Step 5: List files in the latest commit to check for changes
       - name: List files in the latest commit
         run: |
           echo "Files in the latest commit:"
@@ -46,13 +46,14 @@ jobs:
         run: |
           git fetch --unshallow || echo "Not a shallow repository, proceeding with normal diff"
           # Get the list of changed files in the last commit
-          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found or shallow repo")
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found")
           echo "Changed files: $CHANGED_FILES"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       # Step 7: Ensure all files are staged (including new files)
       - name: Stage all files
         run: |
+          # Explicitly add any modified files
           git add . || echo "No changes found to stage"
           git status
 
