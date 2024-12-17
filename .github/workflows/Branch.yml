@@ -21,56 +21,43 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@example.com"
-
       # Step 3: Generate a unique branch name
       - name: Generate a unique branch name
         id: branch_name
         run: |
           BRANCH_NAME="feature-$(date +%Y%m%d-%H%M%S)"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-
       # Step 4: Create the new branch from the latest commit in FSB
       - name: Create new branch
         run: |
           git checkout -b $BRANCH_NAME  # Create a new branch based on FSB
-
       # Step 5: List files in the latest commit to check for changes
       - name: List files in the latest commit
         run: |
           echo "Files in the latest commit:"
           git ls-tree --name-only HEAD
-
-      # Step 6: Check for changes (handling shallow history)
-      - name: Check for changes (handling shallow history)
+      # Step 6: List the changed or newly added files in FSB (between last commit and current)
+      - name: Get changed files
+        id: get_changed_files
         run: |
-          # Check if there is only one commit
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          if [ "$COMMIT_COUNT" -eq 1 ]; then
-            echo "Only one commit in the history, skipping diff"
-            # If there's only one commit, assume files in the working directory are new
-            CHANGED_FILES=$(git ls-files)
-          else
-            # Otherwise, get the changed files between last two commits
-            CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
-          fi
+          git fetch --unshallow || echo "Not a shallow repository, proceeding with normal diff"
+          # Get the list of changed files in the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found")
           echo "Changed files: $CHANGED_FILES"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
-
-      # Step 7: Add files explicitly to the staging area (even if no changes detected)
-      - name: Stage files explicitly
+      # Step 7: Ensure all files are staged (including new files)
+      - name: Stage all files
         run: |
+          # Explicitly add any modified files
           git add . || echo "No changes found to stage"
           git status
-
       # Step 8: Commit and push the new branch (only if changes exist)
       - name: Commit and push new branch
         run: |
-          # Check if there are staged changes
+          # Ensure changes are staged
           if git diff --cached --quiet; then
             echo "No changes to commit."
           else
             git commit -m "Create new feature branch with changes from .github/workflows/Branch.yml"
             git push origin $BRANCH_NAME
           fi
-
-  
