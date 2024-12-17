@@ -3,7 +3,7 @@ name: Create Feature Branch with Specific Files
 on:
   push:
     branches:
-      - main  # Trigger workflow on push to the main branch
+      - FSB  # Trigger workflow on push to the main branch
 permissions:
   contents: write
       
