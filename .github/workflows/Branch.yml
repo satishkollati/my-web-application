@@ -1,63 +1,57 @@
-name: Create New Feature Branch with Specific Changes
+name: Create Feature Branch with Specific Files
 
 on:
   push:
     branches:
-      - FSB  # Trigger workflow when code is pushed to the FSB branch
+      - main  # Trigger workflow on push to the main branch
+permissions:
+  contents: write
+      
 
 jobs:
-  create-branch:
+  create-feature-branch:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code from the FSB branch
-      - name: Checkout FSB branch
+      # Step 1: Checkout the repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: FSB
-
-      # Step 2: Set up Git user identity
+          fetch-depth: 0
+      # Step 2: Set up Git user details
       - name: Set up Git user
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@example.com"
-      # Step 3: Generate a unique branch name
-      - name: Generate a unique branch name
+      # Step 3: Get a list of changed files
+      - name: Get changed files
+        id: diff
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+          echo "Changed files: $CHANGED_FILES"
+      # Step 4: Generate unique branch name
+      - name: Generate unique branch name
         id: branch_name
         run: |
-          BRANCH_NAME="feature-$(date +%Y%m%d-%H%M%S)"
+          DATE=$(date +%Y%m%d-%H%M%S)
+          BRANCH_NAME="feature-${DATE}"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-      # Step 4: Create the new branch from the latest commit in FSB
-      - name: Create new branch
+          echo "Branch name: $BRANCH_NAME"
+      # Step 5: Create a new branch
+      - name: Create new feature branch
         run: |
-          git checkout -b $BRANCH_NAME  # Create a new branch based on FSB
-      # Step 5: List files in the latest commit to check for changes
-      - name: List files in the latest commit
+          git checkout -b $BRANCH_NAME
+          # Get the list of changed files from the previous step
+          CHANGED_FILES=$CHANGED_FILES
+          # Remove all files from the current branch, then checkout only the changed files
+          git rm -rf .  # Remove all files from the working tree
+          git checkout HEAD -- $CHANGED_FILES  # Checkout only the changed/new files
+          # Stage the changes and commit them
+          git add .
+          git commit -m "Create feature branch with specific files: $CHANGED_FILES"
+      # Step 6: Push the new feature branch to the repository
+      - name: Push the feature branch
         run: |
-          echo "Files in the latest commit:"
-          git ls-tree --name-only HEAD
-      # Step 6: List the changed or newly added files in FSB (between last commit and current)
-      - name: Get changed files
-        id: get_changed_files
-        run: |
-          git fetch --unshallow || echo "Not a shallow repository, proceeding with normal diff"
-          # Get the list of changed files in the last commit
-          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found")
-          echo "Changed files: $CHANGED_FILES"
-          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
-      # Step 7: Ensure all files are staged (including new files)
-      - name: Stage all files
-        run: |
-          # Explicitly add any modified files
-          git add . || echo "No changes found to stage"
-          git status
-      # Step 8: Commit and push the new branch (only if changes exist)
-      - name: Commit and push new branch
-        run: |
-          # Ensure changes are staged
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-          else
-            git commit -m "Create new feature branch with changes from .github/workflows/Branch.yml"
-            git push origin $BRANCH_NAME
-          fi
+          git push origin $BRANCH_NAME
