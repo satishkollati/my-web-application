@@ -40,15 +40,20 @@ jobs:
           echo "Files in the latest commit:"
           git ls-tree --name-only HEAD
 
-      # Step 6: Explicitly check for file differences (use a more robust diff)
-      - name: Check for file changes
+      # Step 6: Check if there is only one commit (shallow history)
+      - name: Check for changes (handling shallow history)
         run: |
-          echo "Checking for changes between last two commits"
-          CHANGED_FILES=$(git diff --name-only HEAD^..HEAD)
-          echo "Changed files: $CHANGED_FILES"
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No changes detected between the last two commits."
+          # Check if there is only one commit
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          if [ "$COMMIT_COUNT" -eq 1 ]; then
+            echo "Only one commit in the history, skipping diff"
+            # If there's only one commit, assume files in the working directory are new
+            CHANGED_FILES=$(git ls-files)
+          else
+            # Otherwise, get the changed files between last two commits
+            CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
           fi
+          echo "Changed files: $CHANGED_FILES"
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
 
       # Step 7: Add files explicitly to the staging area (even if no changes detected)
@@ -67,3 +72,4 @@ jobs:
             git commit -m "Create new feature branch with changes from .github/workflows/Branch.yml"
             git push origin $BRANCH_NAME
           fi
+
