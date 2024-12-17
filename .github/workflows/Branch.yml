@@ -90,6 +90,4 @@ jobs:
             git push origin $BRANCH_NAME
           fi
 
-      # Step 8: Output the created branch name
-      - name: Output Branch Name
-        run: echo "Created new feature branch: $BRANCH_NAME"
+  
