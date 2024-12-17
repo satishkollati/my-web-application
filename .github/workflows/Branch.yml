@@ -34,7 +34,13 @@ jobs:
         run: |
           git checkout -b $BRANCH_NAME  # Create a new branch based on FSB
 
-      # Step 5: List the changed or newly added files in FSB (between last commit and current)
+      # Step 5: Debugging to list all files in the latest commit to check for 'test.txt'
+      - name: List files in the latest commit
+        run: |
+          echo "Files in the latest commit:"
+          git ls-tree --name-only HEAD
+          
+      # Step 6: List the changed or newly added files in FSB (between last commit and current)
       - name: Get changed files
         id: get_changed_files
         run: |
@@ -44,20 +50,14 @@ jobs:
           # List the changed files in the latest commit on FSB
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found or shallow repo")
           
-          # If no changes found, check against main branch for any new files
-          if [ "$CHANGED_FILES" == "No changes found or shallow repo" ]; then
-            echo "Checking for new files in main branch..."
-            CHANGED_FILES=$(git diff --name-only origin/main..HEAD || echo "No changes in comparison with main")
-          fi
-          
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
-          
-          # Debugging: List files in the latest commit
-          echo "Files in the latest commit:"
-          git ls-tree --name-only HEAD
 
-      # Step 6: Reset to relevant changes
+          # Debugging: List all files that are in the working directory (new file check)
+          echo "Files in working directory:"
+          ls -la
+
+      # Step 7: Reset to relevant changes
       - name: Reset to relevant changes
         run: |
           # Reset the repository so that we are only working with the files changed in the last commit
@@ -79,7 +79,7 @@ jobs:
           # Debugging: Check the status to ensure files are staged
           git status
 
-      # Step 7: Commit and push the new branch (only if changes exist)
+      # Step 8: Commit and push the new branch (only if changes exist)
       - name: Commit and push new branch
         run: |
           # Check if there are staged changes before committing
@@ -89,5 +89,3 @@ jobs:
             git commit -m "Create new feature branch with only modified and new files"
             git push origin $BRANCH_NAME
           fi
-
-  
