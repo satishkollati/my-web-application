@@ -1,0 +1,72 @@
+name: Create New Feature Branch with Specific Changes
+
+on:
+  push:
+    branches:
+      - main  # Trigger workflow when code is pushed to the main branch
+
+jobs:
+  create-branch:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code from the main branch
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      # Step 2: Set up Git user identity
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@example.com"
+
+      # Step 3: Generate a unique branch name
+      - name: Generate a unique branch name
+        id: branch_name
+        run: |
+          BRANCH_NAME="feature-$(date +%Y%m%d-%H%M%S)"
+          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
+
+      # Step 4: Create the new branch from the latest commit in main
+      - name: Create new branch
+        run: |
+          git checkout -b $BRANCH_NAME  # Create a new branch based on main
+
+      # Step 5: List the changed or newly added files in main (between last commit and current)
+      - name: Get changed files
+        id: get_changed_files
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
+          echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
+          echo "Changed files: $CHANGED_FILES"
+          
+          # Debugging: List files that exist in the latest commit
+          echo "Files in the latest commit:"
+          git ls-tree --name-only HEAD
+
+      # Step 6: Reset to relevant changes
+      - name: Reset to relevant changes
+        run: |
+          # Reset the repository so that we are only working with the files changed in the last commit
+          git reset --hard HEAD~1  # Go back one commit to reset the working directory
+
+          # Checkout only the files that were changed or newly added
+          for FILE in $CHANGED_FILES; do
+            echo "Checking out file: $FILE"
+            git checkout HEAD -- $FILE || echo "File $FILE does not exist in the current commit"
+          done
+
+          # Stage the changes for commit
+          git add .
+
+      # Step 7: Commit the changes and push the new branch
+      - name: Commit and push new branch
+        run: |
+          git commit -m "Create new feature branch with only modified and new files"
+          git push origin $BRANCH_NAME
+
+      # Step 8: Output the created branch name
+      - name: Output Branch Name
+        run: echo "Created new feature branch: $BRANCH_NAME"
