@@ -38,7 +38,12 @@ jobs:
       - name: Get changed files
         id: get_changed_files
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
+          # If the history is shallow (e.g., only one commit), use a different approach
+          git fetch --unshallow || echo "Not a shallow repository, proceeding with normal diff"
+          
+          # Try getting the diff from the last commit
+          CHANGED_FILES=$(git diff --name-only HEAD^..HEAD || echo "No changes found or shallow repo")
+
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
@@ -50,7 +55,7 @@ jobs:
       - name: Reset to relevant changes
         run: |
           # Reset the repository so that we are only working with the files changed in the last commit
-          git reset --hard HEAD~1  # Go back one commit to reset the working directory
+          git reset --hard HEAD^  # Go back one commit to reset the working directory
 
           # Checkout only the files that were changed or newly added
           for FILE in $CHANGED_FILES; do
@@ -71,3 +76,6 @@ jobs:
           git commit -m "Create new feature branch with only modified and new files"
           git push origin $BRANCH_NAME
 
+      # Step 8: Output the created branch name
+      - name: Output Branch Name
+        run: echo "Created new feature branch: $BRANCH_NAME"
