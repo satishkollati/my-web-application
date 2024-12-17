@@ -3,7 +3,7 @@ name: Create New Feature Branch with Specific Changes
 on:
   push:
     branches:
-      - main  # Trigger workflow when code is pushed to the main branch
+      - FSB  # Trigger workflow when code is pushed to the main branch
 
 jobs:
   create-branch:
@@ -13,9 +13,7 @@ jobs:
       # Step 1: Checkout the code from the main branch
       - name: Checkout main branch
         uses: actions/checkout@v4
-        with:
-          ref: main
-
+    
       # Step 2: Set up Git user identity
       - name: Set up Git user
         run: |
@@ -67,6 +65,4 @@ jobs:
           git commit -m "Create new feature branch with only modified and new files"
           git push origin $BRANCH_NAME
 
-      # Step 8: Output the created branch name
-      - name: Output Branch Name
-        run: echo "Created new feature branch: $BRANCH_NAME"
+
