@@ -13,7 +13,9 @@ jobs:
       # Step 1: Checkout the code from the main branch
       - name: Checkout main branch
         uses: actions/checkout@v4
-    
+        with:
+          ref: FSB
+
       # Step 2: Set up Git user identity
       - name: Set up Git user
         run: |
@@ -39,7 +41,7 @@ jobs:
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
-          
+
           # Debugging: List files that exist in the latest commit
           echo "Files in the latest commit:"
           git ls-tree --name-only HEAD
@@ -52,8 +54,12 @@ jobs:
 
           # Checkout only the files that were changed or newly added
           for FILE in $CHANGED_FILES; do
-            echo "Checking out file: $FILE"
-            git checkout HEAD -- $FILE || echo "File $FILE does not exist in the current commit"
+            if [ -f "$FILE" ]; then
+              echo "Checking out file: $FILE"
+              git checkout HEAD -- $FILE
+            else
+              echo "File $FILE does not exist in the current commit"
+            fi
           done
 
           # Stage the changes for commit
@@ -65,4 +71,6 @@ jobs:
           git commit -m "Create new feature branch with only modified and new files"
           git push origin $BRANCH_NAME
 
-
+      # Step 8: Output the created branch name
+      - name: Output Branch Name
+        run: echo "Created new feature branch: $BRANCH_NAME"
