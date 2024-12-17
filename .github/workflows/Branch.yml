@@ -71,6 +71,3 @@ jobs:
           git commit -m "Create new feature branch with only modified and new files"
           git push origin $BRANCH_NAME
 
-      # Step 8: Output the created branch name
-      - name: Output Branch Name
-        run: echo "Created new feature branch: $BRANCH_NAME"
