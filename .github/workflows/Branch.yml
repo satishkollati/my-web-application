@@ -70,9 +70,18 @@ jobs:
           # Stage the changes for commit
           git add .
 
-      # Step 7: Commit the changes and push the new branch
+          # Debugging: Check the status to ensure files are staged
+          git status
+
+      # Step 7: Commit and push the new branch (only if changes exist)
       - name: Commit and push new branch
         run: |
-          git commit -m "Create new feature branch with only modified and new files"
-          git push origin $BRANCH_NAME
+          # Check if there are staged changes before committing
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "Create new feature branch with only modified and new files"
+            git push origin $BRANCH_NAME
+          fi
+
 
