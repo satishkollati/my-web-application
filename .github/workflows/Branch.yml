@@ -3,15 +3,15 @@ name: Create New Feature Branch with Specific Changes
 on:
   push:
     branches:
-      - FSB  # Trigger workflow when code is pushed to the main branch
+      - FSB  # Trigger workflow when code is pushed to the FSB branch
 
 jobs:
   create-branch:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code from the main branch
-      - name: Checkout main branch
+      # Step 1: Checkout the code from the FSB branch
+      - name: Checkout FSB branch
         uses: actions/checkout@v4
         with:
           ref: FSB
@@ -29,25 +29,31 @@ jobs:
           BRANCH_NAME="feature-$(date +%Y%m%d-%H%M%S)"
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
 
-      # Step 4: Create the new branch from the latest commit in main
+      # Step 4: Create the new branch from the latest commit in FSB
       - name: Create new branch
         run: |
-          git checkout -b $BRANCH_NAME  # Create a new branch based on main
+          git checkout -b $BRANCH_NAME  # Create a new branch based on FSB
 
-      # Step 5: List the changed or newly added files in main (between last commit and current)
+      # Step 5: List the changed or newly added files in FSB (between last commit and current)
       - name: Get changed files
         id: get_changed_files
         run: |
-          # If the history is shallow (e.g., only one commit), use a different approach
+          # Fetch the latest changes and detect modified/new files
           git fetch --unshallow || echo "Not a shallow repository, proceeding with normal diff"
           
-          # Try getting the diff from the last commit
-          CHANGED_FILES=$(git diff --name-only HEAD^..HEAD || echo "No changes found or shallow repo")
-
+          # List the changed files in the latest commit on FSB
+          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD || echo "No changes found or shallow repo")
+          
+          # If no changes found, check against main branch for any new files
+          if [ "$CHANGED_FILES" == "No changes found or shallow repo" ]; then
+            echo "Checking for new files in main branch..."
+            CHANGED_FILES=$(git diff --name-only origin/main..HEAD || echo "No changes in comparison with main")
+          fi
+          
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
-
-          # Debugging: List files that exist in the latest commit
+          
+          # Debugging: List files in the latest commit
           echo "Files in the latest commit:"
           git ls-tree --name-only HEAD
 
@@ -55,7 +61,7 @@ jobs:
       - name: Reset to relevant changes
         run: |
           # Reset the repository so that we are only working with the files changed in the last commit
-          git reset --hard HEAD^  # Go back one commit to reset the working directory
+          git reset --hard HEAD~1  # Go back one commit to reset the working directory
 
           # Checkout only the files that were changed or newly added
           for FILE in $CHANGED_FILES; do
@@ -66,10 +72,10 @@ jobs:
               echo "File $FILE does not exist in the current commit"
             fi
           done
-
+          
           # Stage the changes for commit
           git add .
-
+          
           # Debugging: Check the status to ensure files are staged
           git status
 
@@ -84,4 +90,6 @@ jobs:
             git push origin $BRANCH_NAME
           fi
 
-
+      # Step 8: Output the created branch name
+      - name: Output Branch Name
+        run: echo "Created new feature branch: $BRANCH_NAME"
