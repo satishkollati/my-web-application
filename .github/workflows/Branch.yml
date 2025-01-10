@@ -29,7 +29,10 @@ jobs:
         id: diff
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')  # Convert newlines to spaces
+          # Convert newline-separated file list into a space-separated list
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+          # Ensure no leading/trailing spaces in the file paths
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | sed 's/^ *//;s/ *$//')
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
@@ -38,13 +41,14 @@ jobs:
         run: |
           echo "Changed files: $CHANGED_FILES"
           # Use IFS (Internal Field Separator) to handle file paths containing spaces
-          # Ensure paths are handled correctly even with spaces in them
           IFS=$'\n'  # Set IFS to newline to handle filenames with spaces
           for file in $CHANGED_FILES; do
-            echo "Checking out file: '$file'"
+            # Ensure there is no extra space before processing
+            trimmed_file=$(echo "$file" | sed 's/^ *//;s/ *$//')  # Remove leading/trailing spaces
+            echo "Checking out file: '$trimmed_file'"
             # Ensure file exists
-            if [ ! -e "$file" ]; then
-              echo "ERROR: File '$file' does not exist in the repository!"
+            if [ ! -e "$trimmed_file" ]; then
+              echo "ERROR: File '$trimmed_file' does not exist in the repository!"
             fi
           done
 
@@ -67,8 +71,10 @@ jobs:
           # Use IFS to loop through each file path with spaces correctly
           IFS=$'\n'  # Using newline to split on file-by-file basis
           for file in $CHANGED_FILES; do
-            echo "Checking out file: '$file'"
-            git checkout HEAD -- "$file"  # Checkout the file properly
+            # Remove leading/trailing spaces from each file
+            trimmed_file=$(echo "$file" | sed 's/^ *//;s/ *$//')  # Remove leading/trailing spaces
+            echo "Checking out file: '$trimmed_file'"
+            git checkout HEAD -- "$trimmed_file"  # Checkout the file properly
           done
           # Stage the changes and commit them
           git add .
@@ -78,3 +84,4 @@ jobs:
       - name: Push the feature branch
         run: |
           git push origin $BRANCH_NAME
+
