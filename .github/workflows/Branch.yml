@@ -51,6 +51,7 @@ jobs:
           # Create a new branch and checkout
           git checkout -b "$BRANCH_NAME"
           echo "Created and checked out branch: $BRANCH_NAME"
+          echo "BRANCH_NAME=${BRANCH_NAME} >> $GITHUB_ENV
           
       # Step 5: Remove all files from the working directory
       - name: Remove all files
@@ -88,8 +89,11 @@ jobs:
         run: |
           git commit -m "Create feature branch with specific files"
           
+          
       # Step 9: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
           git push origin "$BRANCH_NAME"
           echo "Pushed the branch: $BRANCH_NAME"
+        env:
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}
