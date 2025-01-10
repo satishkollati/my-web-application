@@ -30,7 +30,8 @@ jobs:
         id: diff
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')  # Replace newlines with spaces
+          # Replace newlines with spaces to handle file names with spaces
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
@@ -47,16 +48,21 @@ jobs:
       - name: Create new feature branch
         run: |
           git checkout -b $BRANCH_NAME
+          
+          # Get the list of changed files from the environment variable
           CHANGED_FILES=$CHANGED_FILES
 
-          # Handle filenames with spaces by splitting into an array
-          IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
+          # Split the changed files into an array (handling spaces properly)
+          IFS=$' ' read -r -a files <<< "$CHANGED_FILES"
 
           # Checkout only the changed files
           for file in "${files[@]}"; do
+            # Ensure the file exists before checking it out
             if [ -f "$file" ]; then
               echo "Processing file: $file"
               git checkout HEAD -- "$file"
+            else
+              echo "File not found: $file"
             fi
           done
 
