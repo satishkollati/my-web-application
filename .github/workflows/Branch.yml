@@ -30,12 +30,9 @@ jobs:
         id: diff
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
+          # Replace newlines with spaces to handle the files properly
           CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
-          if [ -z "$CHANGED_FILES" ]; then
-            echo "No files have changed. Exiting..."
-            exit 0
-          fi
           echo "Changed files: $CHANGED_FILES"
 
       # Step 4: Generate unique branch name
@@ -47,19 +44,26 @@ jobs:
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name: $BRANCH_NAME"
 
-      # Step 5: Create a new feature branch and check out the changed files
-      - name: Create new feature branch and checkout changed files
+      # Step 5: Create a new feature branch and process changed files
+      - name: Create new feature branch and checkout only changed files
         run: |
+          # Create the new branch based on the FSB branch
           git checkout -b $BRANCH_NAME
+          
+          # Get the list of changed files from the environment variable
           CHANGED_FILES=$CHANGED_FILES
-          # Checkout only the changed files
+
+          # Split the changed files into an array
           IFS=' ' read -r -a files <<< "$CHANGED_FILES"
+
+          # Checkout only the changed files
           for file in "${files[@]}"; do
             if [ -f "$file" ]; then
               echo "Processing file: $file"
               git checkout HEAD -- "$file"
             fi
           done
+
           # Stage the changes
           git add .
 
