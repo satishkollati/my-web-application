@@ -30,8 +30,7 @@ jobs:
         id: diff
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
-          # Replace newlines with spaces to handle the files properly
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')  # Replace newlines with spaces
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
@@ -44,17 +43,14 @@ jobs:
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name: $BRANCH_NAME"
 
-      # Step 5: Create a new feature branch and process changed files
-      - name: Create new feature branch and checkout only changed files
+      # Step 5: Create a new feature branch and checkout only changed files
+      - name: Create new feature branch
         run: |
-          # Create the new branch based on the FSB branch
           git checkout -b $BRANCH_NAME
-          
-          # Get the list of changed files from the environment variable
           CHANGED_FILES=$CHANGED_FILES
 
-          # Split the changed files into an array
-          IFS=' ' read -r -a files <<< "$CHANGED_FILES"
+          # Handle filenames with spaces by splitting into an array
+          IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
 
           # Checkout only the changed files
           for file in "${files[@]}"; do
