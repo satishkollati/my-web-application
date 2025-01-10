@@ -47,7 +47,14 @@ jobs:
           CHANGED_FILES=$CHANGED_FILES
           # Remove all files from the current branch, then checkout only the changed files
           git rm -rf .  # Remove all files from the working tree
-          git checkout HEAD -- $CHANGED_FILES  # Checkout only the changed/new files
+          #git checkout HEAD -- $CHANGED_FILES  # Checkout only the changed/new files
+          # Split the changed files into an array
+          IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
+            # Checkout only the changed files
+          for file in "${files[@]}"; do
+          echo "Processing file: $file"
+          git checkout HEAD -- "$file"
+          done
           # Stage the changes and commit them
           git add .
           git commit -m "Create feature branch with specific files: $CHANGED_FILES"
