@@ -28,61 +28,57 @@ jobs:
       - name: Get changed files
         id: diff
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
-          # Convert newline-separated file list into a space-separated list
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')  # Replace newline with space
-          # Ensure no leading/trailing spaces in the file paths
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | sed 's/^ *//;s/ *$//')
+          # Get the list of changed files between HEAD~1 and HEAD (this represents the last commit)
+          CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD~1..HEAD)
+          # Store the list in an environment variable to use in subsequent steps
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
-      # Step 4: Debugging - Print out the changed file paths
-      - name: Debugging - Print changed file paths
+      # Step 4: Create and checkout the new branch
+      - name: Create and checkout new feature branch
         run: |
-          echo "Changed files: $CHANGED_FILES"
-          # Use IFS (Internal Field Separator) to handle file paths containing spaces
-          IFS=' '  # Space as separator to handle file paths one by one
-          for file in $CHANGED_FILES; do
-            # Ensure there is no extra space before processing
-            trimmed_file=$(echo "$file" | sed 's/^ *//;s/ *$//')  # Remove leading/trailing spaces
-            echo "Checking out file: '$trimmed_file'"
-            # Ensure file exists
-            if [ ! -e "$trimmed_file" ]; then
-              echo "ERROR: File '$trimmed_file' does not exist in the repository!"
-            fi
-          done
-
-      # Step 5: Generate unique branch name
-      - name: Generate unique branch name
-        id: branch_name
-        run: |
+          # Generate unique branch name
           DATE=$(date +%Y%m%d-%H%M%S)
           BRANCH_NAME="feature-${DATE}"
-          echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-          echo "Branch name: $BRANCH_NAME"
+          # Create a new branch and checkout
+          git checkout -b "$BRANCH_NAME"
+          echo "Created and checked out branch: $BRANCH_NAME"
 
-      # Step 6: Create a new branch
-      - name: Create new feature branch
+      # Step 5: Remove all files from the working directory
+      - name: Remove all files
         run: |
-          git checkout -b $BRANCH_NAME
-          CHANGED_FILES=$CHANGED_FILES
-          # Remove all files from the current branch, then checkout only the changed files
-          git rm -rf .  # Remove all files from the working tree
-          # Use IFS to loop through each file path with spaces correctly
-          IFS=' '  # Use space as separator
-          for file in $CHANGED_FILES; do
-            # Remove leading/trailing spaces from each file
-            trimmed_file=$(echo "$file" | sed 's/^ *//;s/ *$//')  # Remove leading/trailing spaces
-            echo "Checking out file: '$trimmed_file'"
-            git checkout HEAD -- "$trimmed_file"  # Checkout the file properly
-          done
-          # Stage the changes and commit them
-          git add .
-          git commit -m "Create feature branch with specific files: $CHANGED_FILES"
+          git rm -rf .
+          echo "Removed all files from the working directory"
 
-      # Step 7: Push the feature branch to the repository
+      # Step 6: Restore changed files
+      - name: Checkout changed files
+        run: |
+          # Read the changed files into an array
+          CHANGED_FILES=${{ env.CHANGED_FILES }}
+          IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
+
+          # Process each file and checkout from HEAD
+          for file in "${files[@]}"; do
+            echo "Processing file: $file"
+            git checkout HEAD -- "$file"
+          done
+
+      # Step 7: Add the changed files back to the staging area
+      - name: Add changed files back
+        run: |
+          git add .
+          echo "Added changed files back to staging area"
+
+      # Step 8: Commit the changes
+      - name: Commit the changes
+        run: |
+          git commit -m "Create feature branch with specific files"
+
+      # Step 9: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
-          git push origin $BRANCH_NAME
+          git push origin "$BRANCH_NAME"
+          echo "Pushed the branch: $BRANCH_NAME"
+
 
 
