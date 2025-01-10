@@ -50,17 +50,32 @@ jobs:
           git rm -rf .
           echo "Removed all files from the working directory"
 
-      # Step 6: Restore changed files
+      # Step 6: Checkout changed files
       - name: Checkout changed files
         run: |
+          # Ensure CHANGED_FILES is not empty
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No changed files detected!"
+            exit 1
+          fi
+
           # Read the changed files into an array
-          CHANGED_FILES=${{ env.CHANGED_FILES }}
           IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
+
+          # Debugging: Print files to be processed
+          echo "Files to checkout: ${files[@]}"
 
           # Process each file and checkout from HEAD
           for file in "${files[@]}"; do
             echo "Processing file: $file"
-            git checkout HEAD -- "$file"
+            
+            # Ensure the file exists in HEAD before checking it out
+            if git ls-tree -r HEAD --name-only | grep -q "^$file$"; then
+              echo "Checking out file: $file"
+              git checkout HEAD -- "$file"
+            else
+              echo "ERROR: File '$file' does not exist in HEAD!"
+            fi
           done
 
       # Step 7: Add the changed files back to the staging area
@@ -79,6 +94,7 @@ jobs:
         run: |
           git push origin "$BRANCH_NAME"
           echo "Pushed the branch: $BRANCH_NAME"
+
 
 
 
