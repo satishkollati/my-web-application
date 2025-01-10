@@ -47,8 +47,8 @@ jobs:
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name: $BRANCH_NAME"
 
-      # Step 5: Create a new feature branch
-      - name: Create new feature branch
+      # Step 5: Create a new feature branch and check out the changed files
+      - name: Create new feature branch and checkout changed files
         run: |
           git checkout -b $BRANCH_NAME
           CHANGED_FILES=$CHANGED_FILES
@@ -60,11 +60,16 @@ jobs:
               git checkout HEAD -- "$file"
             fi
           done
-          # Stage the changes and commit them
+          # Stage the changes
           git add .
-          git commit -m "Create feature branch with specific files: $CHANGED_FILES"
 
-      # Step 6: Push the new feature branch to the repository
+      # Step 6: Commit changes if there are any
+      - name: Commit changes
+        run: |
+          # Check if there are any staged changes
+          git diff --cached --quiet || git commit -m "Create feature branch with specific files: $CHANGED_FILES"
+
+      # Step 7: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
           git push origin $BRANCH_NAME
