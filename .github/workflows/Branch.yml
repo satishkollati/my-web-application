@@ -51,7 +51,7 @@ jobs:
           # Create a new branch and checkout
           git checkout -b "$BRANCH_NAME"
           echo "Created and checked out branch: $BRANCH_NAME"
-          echo "BRANCH_NAME=${BRANCH_NAME} >> $GITHUB_ENV
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
           
       # Step 5: Remove all files from the working directory
       - name: Remove all files
