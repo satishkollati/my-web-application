@@ -3,83 +3,88 @@ name: Create Feature Branch with Specific Files
 on:
   push:
     branches:
-      - FSB  # Trigger workflow on push to the main branch
+      - FSB  # Trigger workflow on push to the 'FSB' branch
     paths-ignore:
-      - '.github/workflows/**'
+      - '.github/workflows/**'  # Ignore changes in the workflow directory
 permissions:
-  contents: write
+  contents: write  # Grant write permissions to the contents of the repository
 
 jobs:
   create-feature-branch:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # Run the job on the latest Ubuntu runner
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Checkout the repository to get the latest code
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 0  # Fetch the full history to ensure we can reference all commits
 
-      # Step 2: Set up Git user details
+      # Step 2: Set up Git user details for commits made by the GitHub Actions workflow
       - name: Set up Git user
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@example.com"
-          
+          git config --global user.name "github-actions"  # Set Git user name
+          git config --global user.email "github-actions@example.com"  # Set Git user email
 
+      # Step 3: (Optional) Get changed files, this step is not in your provided YAML but can be added before branch creation if necessary
 
-      # Step 4: Create and checkout the new branch
+      # Step 4: Create and checkout the new feature branch
       - name: Create and checkout new feature branch
         run: |
-          # Generate unique branch name
-          DATE=$(date +%Y%m%d-%H%M%S)
-          BRANCH_NAME="feature-${DATE}"
-          # Create a new branch and checkout
-          git checkout -b "$BRANCH_NAME"
-          echo "Created and checked out branch: $BRANCH_NAME"
-          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          # Generate a unique branch name based on current timestamp
+          DATE=$(date +%Y%m%d-%H%M%S)  # Get the current date and time as a string
+          BRANCH_NAME="feature-${DATE}"  # Create a branch name with the prefix 'feature-'
           
+          # Create and checkout the new branch
+          git checkout -b "$BRANCH_NAME"
+          
+          # Output the created branch name for visibility
+          echo "Created and checked out branch: $BRANCH_NAME"
+          
+          # Store the branch name in the environment variable for later steps
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+
       # Step 5: Remove all files from the working directory
       - name: Remove all files
         run: |
-          git rm -rf .
+          git rm -rf .  # Remove all files from the working directory to start fresh
           echo "Removed all files from the working directory"
           
-      # Step 6: Restore changed files
+      # Step 6: Restore the files that were changed in the last commit
       - name: Checkout changed files
         run: |
-          set -x
-          # Get the changed files list from the environment variable
+          set -x  # Enable command tracing for debugging
+          
+          # Get the list of changed files between the last commit and the current one
           CHANGED_FILES=$(git diff --name-only --diff-filter=ACMR HEAD~1..HEAD)
           
-          # Check if CHANGED_FILES is not empty
+          # Check if any files have changed
           if [ -n "$CHANGED_FILES" ]; then
-            # Loop over each file (handling spaces correctly)
-            IFS=$'\n'  # Newline as delimiter for filenames with spaces
+            # Loop over each changed file and restore it from HEAD
+            IFS=$'\n'  # Use newline as the delimiter to handle file names with spaces
             for file in $CHANGED_FILES; do
               echo "Processing file: $file"
-              git checkout HEAD -- "$file"
+              git checkout HEAD -- "$file"  # Checkout the specific file from HEAD
             done
           else
-            echo "No changed files to restore."
+            echo "No changed files to restore."  # Handle the case where no files were changed
           fi
           
       # Step 7: Add the changed files back to the staging area
       - name: Add changed files back
         run: |
-          git add .
+          git add .  # Add all modified/checked out files to the staging area
           echo "Added changed files back to staging area"
           
-      # Step 8: Commit the changes
+      # Step 8: Commit the changes made (the restoration of files)
       - name: Commit the changes
         run: |
-          git commit -m "Create feature branch with specific files"
-          
+          git commit -m "Create feature branch with specific files"  # Commit with a message
           
       # Step 9: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
-          git push origin "$BRANCH_NAME"
-          echo "Pushed the branch: $BRANCH_NAME"
+          git push origin "$BRANCH_NAME"  # Push the newly created branch to the origin repository
+          echo "Pushed the branch: $BRANCH_NAME"  # Output the pushed branch name
         env:
-          BRANCH_NAME: ${{ env.BRANCH_NAME }}
+          BRANCH_NAME: ${{ env.BRANCH_NAME }}  # Pass the branch name to the push command from the environment
