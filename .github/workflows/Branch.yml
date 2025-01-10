@@ -30,7 +30,7 @@ jobs:
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
           # Convert newline-separated file list into a space-separated list
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')  # Replace newline with space
           # Ensure no leading/trailing spaces in the file paths
           CHANGED_FILES=$(echo "$CHANGED_FILES" | sed 's/^ *//;s/ *$//')
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
@@ -41,7 +41,7 @@ jobs:
         run: |
           echo "Changed files: $CHANGED_FILES"
           # Use IFS (Internal Field Separator) to handle file paths containing spaces
-          IFS=$'\n'  # Set IFS to newline to handle filenames with spaces
+          IFS=' '  # Space as separator to handle file paths one by one
           for file in $CHANGED_FILES; do
             # Ensure there is no extra space before processing
             trimmed_file=$(echo "$file" | sed 's/^ *//;s/ *$//')  # Remove leading/trailing spaces
@@ -69,7 +69,7 @@ jobs:
           # Remove all files from the current branch, then checkout only the changed files
           git rm -rf .  # Remove all files from the working tree
           # Use IFS to loop through each file path with spaces correctly
-          IFS=$'\n'  # Using newline to split on file-by-file basis
+          IFS=' '  # Use space as separator
           for file in $CHANGED_FILES; do
             # Remove leading/trailing spaces from each file
             trimmed_file=$(echo "$file" | sed 's/^ *//;s/ *$//')  # Remove leading/trailing spaces
@@ -84,4 +84,5 @@ jobs:
       - name: Push the feature branch
         run: |
           git push origin $BRANCH_NAME
+
 
