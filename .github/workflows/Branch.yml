@@ -42,6 +42,7 @@ jobs:
           # Generate unique branch name
           DATE=$(date +%Y%m%d-%H%M%S)
           BRANCH_NAME="feature-${DATE}"
+          echo "Generated Branch Name: $BRANCH_NAME"  # Debugging line to check the branch name
           # Create a new branch and checkout
           git checkout -b "$BRANCH_NAME"
           echo "Created and checked out branch: $BRANCH_NAME"
@@ -62,7 +63,7 @@ jobs:
           # Check if CHANGED_FILES is empty
           if [ -n "$CHANGED_FILES" ]; then
             # Split the files into an array using newline as delimiter to handle spaces
-            IFS=$'\n' read -r -a files <<< "$CHANGED_FILES"
+            IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
             
             # Process each file and checkout from HEAD
             for file in "${files[@]}"; do
@@ -87,5 +88,6 @@ jobs:
       # Step 9: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
+          echo "Pushing branch: $BRANCH_NAME"  # Debugging line to check the branch name being pushed
           git push origin "$BRANCH_NAME"
           echo "Pushed the branch: $BRANCH_NAME"
