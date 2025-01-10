@@ -56,17 +56,36 @@ jobs:
       - name: Checkout changed files
         run: |
           set -x
-          # Read the changed files into an array (using newline as delimiter to preserve file paths with spaces)
-          CHANGED_FILES=${{ env.CHANGED_FILES }}
-          IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
-          # Process each file and checkout from HEAD
-          for file in "${files[@]}"; do
-            echo "Processing file: $file"
-            git checkout HEAD -- "$file"
-          done
+          # Get the changed files list from the environment variable
+          CHANGED_FILES="${{ env.CHANGED_FILES }}"
+          
+          # Check if CHANGED_FILES is empty
+          if [ -n "$CHANGED_FILES" ]; then
+            # Split the files into an array using newline as delimiter to handle spaces
+            IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
+            
+            # Process each file and checkout from HEAD
+            for file in "${files[@]}"; do
+              echo "Processing file: $file"
+              git checkout HEAD -- "$file"
+            done
+          else
+            echo "No changed files to restore."
+          fi
 
       # Step 7: Add the changed files back to the staging area
       - name: Add changed files back
         run: |
           git add .
-         
+          echo "Added changed files back to staging area"
+
+      # Step 8: Commit the changes
+      - name: Commit the changes
+        run: |
+          git commit -m "Create feature branch with specific files"
+
+      # Step 9: Push the new feature branch to the repository
+      - name: Push the feature branch
+        run: |
+          git push origin "$BRANCH_NAME"
+          echo "Pushed the branch: $BRANCH_NAME"
