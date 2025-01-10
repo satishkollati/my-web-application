@@ -25,7 +25,7 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@example.com"
-
+          
       # Step 3: Get a list of changed files
       - name: Get changed files
         id: diff
@@ -35,7 +35,7 @@ jobs:
           # Store the list in an environment variable to use in subsequent steps
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
-
+          
       # Step 4: Create and checkout the new branch
       - name: Create and checkout new feature branch
         run: |
@@ -45,13 +45,13 @@ jobs:
           # Create a new branch and checkout
           git checkout -b "$BRANCH_NAME"
           echo "Created and checked out branch: $BRANCH_NAME"
-
+          
       # Step 5: Remove all files from the working directory
       - name: Remove all files
         run: |
           git rm -rf .
           echo "Removed all files from the working directory"
-
+          
       # Step 6: Restore changed files
       - name: Checkout changed files
         run: |
@@ -62,7 +62,7 @@ jobs:
           # Check if CHANGED_FILES is empty
           if [ -n "$CHANGED_FILES" ]; then
             # Split the files into an array using newline as delimiter to handle spaces
-            IFS=$'\n' read -r -d '' -a files <<< "$CHANGED_FILES"
+            IFS=$'\n' read -r -a files <<< "$CHANGED_FILES"
             
             # Process each file and checkout from HEAD
             for file in "${files[@]}"; do
@@ -72,18 +72,18 @@ jobs:
           else
             echo "No changed files to restore."
           fi
-
+          
       # Step 7: Add the changed files back to the staging area
       - name: Add changed files back
         run: |
           git add .
           echo "Added changed files back to staging area"
-
+          
       # Step 8: Commit the changes
       - name: Commit the changes
         run: |
           git commit -m "Create feature branch with specific files"
-
+          
       # Step 9: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
