@@ -1,11 +1,3 @@
-name: Create Feature Branch with Specific Files
-
-on:
-  push:
-    branches:
-      - FSB  # Trigger workflow on push to the main branch
-permissions:
-  contents: write
 jobs:
   create-feature-branch:
     runs-on: ubuntu-latest
@@ -28,11 +20,26 @@ jobs:
         id: diff
         run: |
           CHANGED_FILES=$(git diff --name-only HEAD~1..HEAD)
-          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')
+          CHANGED_FILES=$(echo "$CHANGED_FILES" | tr '\n' ' ')  # Convert newlines to spaces
           echo "CHANGED_FILES=$CHANGED_FILES" >> $GITHUB_ENV
           echo "Changed files: $CHANGED_FILES"
 
-      # Step 4: Generate unique branch name
+      # Step 4: Debugging - Print out the changed file paths
+      - name: Debugging - Print changed file paths
+        run: |
+          echo "Changed files: $CHANGED_FILES"
+          # Use IFS (Internal Field Separator) to handle file paths containing spaces
+          # Ensure paths are handled correctly even with spaces in them
+          IFS=$'\n'  # Set IFS to newline to handle filenames with spaces
+          for file in $CHANGED_FILES; do
+            echo "Checking out file: '$file'"
+            # Ensure file exists
+            if [ ! -e "$file" ]; then
+              echo "ERROR: File '$file' does not exist in the repository!"
+            fi
+          done
+
+      # Step 5: Generate unique branch name
       - name: Generate unique branch name
         id: branch_name
         run: |
@@ -41,25 +48,24 @@ jobs:
           echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
           echo "Branch name: $BRANCH_NAME"
 
-      # Step 5: Create a new branch
+      # Step 6: Create a new branch
       - name: Create new feature branch
         run: |
           git checkout -b $BRANCH_NAME
-          # Get the list of changed files from the previous step
           CHANGED_FILES=$CHANGED_FILES
           # Remove all files from the current branch, then checkout only the changed files
           git rm -rf .  # Remove all files from the working tree
-          # Handle file paths with spaces properly
+          # Use IFS to loop through each file path with spaces correctly
+          IFS=$'\n'  # Using newline to split on file-by-file basis
           for file in $CHANGED_FILES; do
-            git checkout HEAD -- "$file"  # Ensure each file path is quoted
+            echo "Checking out file: '$file'"
+            git checkout HEAD -- "$file"  # Checkout the file properly
           done
           # Stage the changes and commit them
           git add .
           git commit -m "Create feature branch with specific files: $CHANGED_FILES"
 
-      # Step 6: Push the feature branch to the repository
+      # Step 7: Push the feature branch to the repository
       - name: Push the feature branch
         run: |
           git push origin $BRANCH_NAME
-
-    
