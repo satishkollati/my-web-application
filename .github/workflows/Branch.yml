@@ -42,6 +42,7 @@ jobs:
           # Generate unique branch name
           DATE=$(date +%Y%m%d-%H%M%S)
           BRANCH_NAME="feature-${DATE}"
+          echo "Generated Branch Name: $BRANCH_NAME"  # Debugging line to check the branch name
           # Create a new branch and checkout
           git checkout -b "$BRANCH_NAME"
           echo "Created and checked out branch: $BRANCH_NAME"
@@ -87,5 +88,6 @@ jobs:
       # Step 9: Push the new feature branch to the repository
       - name: Push the feature branch
         run: |
+          echo "Pushing branch: $BRANCH_NAME"  # Debugging line to check the branch name being pushed
           git push origin "$BRANCH_NAME"
           echo "Pushed the branch: $BRANCH_NAME"
