@@ -38,7 +38,7 @@ jobs:
             exit 1
           fi
           echo "project_id=$project_id" >> $GITHUB_OUTPUT
-
+          github-token: ${{ secrets.GH_PAT }}
       - name: Create Issue
         id: create_issue
         run: |
