@@ -88,11 +88,11 @@ jobs:
             core.setOutput('itemId', result.data.id);
           github-token: ${{ github.token }}
 
-      - name: Update Status Field
-        uses: alex-page/update-project-v2-item-field@v2
-        with:
-          project-id: ${{ steps.get_project.outputs.project_id }}
-          item-id: ${{ steps.add_to_project.outputs.itemId }}
-          field-name: "Status"
-          value: "${{ github.event.inputs.status_option }}"
-          github-token: ${{ github.token }}
+      # - name: Update Status Field
+      #   uses: alex-page/update-project-v2-item-field@v2
+      #   with:
+      #     project-id: ${{ steps.get_project.outputs.project_id }}
+      #     item-id: ${{ steps.add_to_project.outputs.itemId }}
+      #     field-name: "Status"
+      #     value: "${{ github.event.inputs.status_option }}"
+      #     github-token: ${{ github.token }}
