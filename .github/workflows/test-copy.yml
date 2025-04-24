@@ -1,130 +1,130 @@
-name: Copy Files to Network Share, Wait for Approval, and Commit to Main Branch
+name: Create Issue in Personal ProjectV2 with Status
 
 on:
   workflow_dispatch:
     inputs:
-      Source_Folder:
-        description: "Comma-separated list of branch/files/folders (e.g. 'copybranch/Dockerfile,copybranch/src/config.json,copybranch/src/folder')"
+      issue_title:
+        description: "Title of the issue"
         required: true
-        default: "copybranch/Dockerfile,copybranch/src/config.json"
-      Target_Folder:
-        description: "Network share path for the copied files (e.g. '\\\\network\\share\\target')"
+      issue_body:
+        description: "Body content of the issue"
+        required: false
+        default: ""
+      project_title:
+        description: "Your Project v2 name"
         required: true
-        default: "temp"
+      status_option_name:
+        description: "Status option (e.g., To do, In Progress)"
+        required: true
 
 jobs:
-  copy-to-network-share:
-    runs-on: windows-latest  # Windows runner
+  create-and-add:
+    runs-on: ubuntu-latest
+    env:
+      GH_PAT: ${{ secrets.GH_PAT }}
+
     steps:
-      # Step 1: Checkout the source branch
-      - name: Checkout Source Branch
-        uses: actions/checkout@v3
-        with:
-          ref: ${{ github.head_ref || github.ref }}
+    - name: Create issue
+      id: create_issue
+      run: |
+        response=$(curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
+          -H "Authorization: Bearer $GH_PAT" \
+          -H "Accept: application/vnd.github+json" \
+          -d "{\"title\":\"${{ github.event.inputs.issue_title }}\",\"body\":\"${{ github.event.inputs.issue_body }}\"}")
 
-      # Step 2: Create Main Directory on Network Share
-      - name: Create Main Directory on Network Share
-        shell: pwsh
-        run: |
-          $targetDir = "${{ github.event.inputs.Target_Folder }}"
-          if (!(Test-Path $targetDir)) {
-            Write-Host "Creating Main directory: $targetDir"
-            New-Item -ItemType Directory -Path $targetDir
-          } else {
-            Write-Host "Main directory already exists: $targetDir"
-          }
+        echo "$response"
+        echo "issue_node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
 
-      # Step 3: Delete Existing Files from Target Directory
-      - name: Delete Existing Files from Directory
-        shell: pwsh
-        run: |
-          $targetDir = "${{ github.event.inputs.Target_Folder }}"
-          Write-Host "Deleting existing files in Main directory: $targetDir"
-          Get-ChildItem -Path $targetDir -Recurse | Remove-Item -Force -Recurse
-
-      # Step 4: Create Validation Directory on Network Share
-      - name: Create Validation Directory on Network Share
-        shell: pwsh
-        run: |
-          $targetDir = "${{ github.event.inputs.Target_Folder }}\test-validation"
-          if (!(Test-Path $targetDir)) {
-            Write-Host "Creating Validation directory: $targetDir"
-            New-Item -ItemType Directory -Path $targetDir
-          } else {
-            Write-Host "Validation directory already exists: $targetDir"
-          }
-
-      # Step 5: Copy Files/Folders to Network Share
-      - name: Copy Files/Folders to Network Share
-        shell: pwsh
-        run: |
-           $targetDir = "${{ github.event.inputs.Target_Folder }}"
-           # Split the comma-separated list of source paths
-            $sourcePaths = "${{ github.event.inputs.Source_Folder }}" -split ","
-            foreach ($sourcePath in $sourcePaths) {
-                # Split each source path into branch and file/folder path
-                $parts = $sourcePath -split "/"
-                $branch = $parts[0]
-                $path = $parts[1]
-                # Log the branch and path to be processed
-                Write-Host "Checking out branch: $branch"
-                
-                # Fetch and checkout the specified branch
-                git fetch origin $branch
-                git checkout $branch
-
-                # Check if the path is a file or directory
-                if (Test-Path $path -PathType Leaf) {
-                    # It's a file
-                    Write-Host "Copying file: $path"
-                    $originalFileName = $path
-                    $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
-                    
-                    # Create a new unique name for the file
-                    $name = (Get-Item $originalFileName).BaseName + "-" + $myrev + (Get-Item $originalFileName).Extension
-                    $targetFilePath = "$targetDir\$name"
-                    
-                    # Copy the file to the target folder
-                    Copy-Item $originalFileName -Destination $targetFilePath -Force
-                    # Verify that the file exists in the target folder
-                    if (Test-Path $targetFilePath) {
-                        Write-Host "File copied successfully: $targetFilePath"
-                    } else {
-                        Write-Host "Error: File was not copied to $targetFilePath"
-                        exit 1  # Exit with error if file doesn't exist
-                    }
-                }
-                elseif (Test-Path $path -PathType Container) {
-                    # It's a directory
-                    Write-Host "Copying directory: $path"
-                    # Get all files in the directory, including subdirectories
-                    $files = Get-ChildItem -Path $path -Recurse -File
-                    foreach ($file in $files) {
-                        $originalFileName = $file.FullName
-                        $myrev = $env:GITHUB_RUN_NUMBER  # Use GitHub Run Number or another unique identifier
-                        
-                        # Create a new unique name for the file
-                        $name = $file.BaseName + "-" + $myrev + $file.Extension
-                        $targetFilePath = "$targetDir\$name"
-                        
-                        # Log the file that's being copied
-                        Write-Host "Copying file: $originalFileName to $targetFilePath"
-                        # Copy the file to the target folder with the new name
-                        Copy-Item $originalFileName -Destination $targetFilePath -Force
-                        # Verify that the file exists in the target folder
-                        if (Test-Path $targetFilePath) {
-                            Write-Host "File copied successfully: $targetFilePath"
-                        } else {
-                            Write-Host "Error: File was not copied to $targetFilePath"
-                            exit 1  # Exit with error if file doesn't exist
-                        }
-                    }
-                } else {
-                    Write-Host "Error: The path $path is neither a valid file nor a directory."
-                    exit 1
-                }
+    - name: Get ProjectV2 ID (Personal Account)
+      id: get_project
+      run: |
+        query='{
+          viewer {
+            projectsV2(first: 20) {
+              nodes {
+                id
+                title
+              }
             }
+          }
+        }'
 
-            # List all files in the target folder sorted by modification time (like `ls -ltr`)
-            Write-Host "Listing all files in target folder sorted by modification time:"
-            Get-ChildItem -Path $targetDir | Sort-Object LastWriteTime -Descending | Format-Table Name, Length, LastWriteTime
+        result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
+          --data "{\"query\":\"$query\"}" https://api.github.com/graphql)
+
+        echo "$result" | jq .
+        project_id=$(echo "$result" | jq -r '.data.viewer.projectsV2.nodes[] | select(.title=="${{ github.event.inputs.project_title }}") | .id')
+        echo "project_id=$project_id" >> $GITHUB_OUTPUT
+
+    - name: Get Status Field and Option IDs
+      id: get_status_info
+      run: |
+        query='{
+          node(id: "${{ steps.get_project.outputs.project_id }}") {
+            ... on ProjectV2 {
+              fields(first: 20) {
+                nodes {
+                  ... on ProjectV2SingleSelectField {
+                    id
+                    name
+                    options {
+                      id
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }'
+
+        result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
+          --data "{\"query\":\"$query\"}" https://api.github.com/graphql)
+
+        echo "$result" | jq .
+        status_field_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
+        status_option_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name=="${{ github.event.inputs.status_option_name }}") | .id')
+
+        echo "status_field_id=$status_field_id" >> $GITHUB_OUTPUT
+        echo "status_option_id=$status_option_id" >> $GITHUB_OUTPUT
+
+    - name: Add Issue to Project
+      id: add_to_project
+      run: |
+        mutation='mutation {
+          addProjectV2ItemById(input: {
+            projectId: "${{ steps.get_project.outputs.project_id }}",
+            contentId: "${{ steps.create_issue.outputs.issue_node_id }}"
+          }) {
+            item {
+              id
+            }
+          }
+        }'
+
+        result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
+          --data "{\"query\":\"$mutation\"}" https://api.github.com/graphql)
+
+        echo "$result" | jq .
+        item_id=$(echo "$result" | jq -r '.data.addProjectV2ItemById.item.id')
+        echo "item_id=$item_id" >> $GITHUB_OUTPUT
+
+    - name: Set Status Field
+      run: |
+        mutation='mutation {
+          updateProjectV2ItemFieldValue(input: {
+            projectId: "${{ steps.get_project.outputs.project_id }}",
+            itemId: "${{ steps.add_to_project.outputs.item_id }}",
+            fieldId: "${{ steps.get_status_info.outputs.status_field_id }}",
+            value: {
+              singleSelectOptionId: "${{ steps.get_status_info.outputs.status_option_id }}"
+            }
+          }) {
+            projectV2Item {
+              id
+            }
+          }
+        }'
+
+        curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
+          --data "{\"query\":\"$mutation\"}" https://api.github.com/graphql | jq .
