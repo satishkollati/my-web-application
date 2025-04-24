@@ -56,10 +56,11 @@ EOF
           --data "$(jq -nc --arg q "$query" '{query: $q}')" https://api.github.com/graphql)
 
         echo "$result" | jq .
-        project_id=$(echo "$result" | jq -r '.data.viewer.projectsV2.nodes[] | select(.title=="${{ github.event.inputs.project_title }}") | .id')
+
+        project_id=$(echo "$result" | jq -r --arg title "${{ github.event.inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title==$title) | .id')
 
         if [ -z "$project_id" ]; then
-          echo "❌ Project not found!"
+          echo "❌ Project '${{ github.event.inputs.project_title }}' not found!"
           exit 1
         fi
 
@@ -96,10 +97,10 @@ EOF
         echo "$result" | jq .
 
         status_field_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
-        status_option_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name=="${{ github.event.inputs.status_option_name }}") | .id')
+        status_option_id=$(echo "$result" | jq -r --arg status "${{ github.event.inputs.status_option_name }}" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$status) | .id')
 
         if [ -z "$status_field_id" ] || [ -z "$status_option_id" ]; then
-          echo "❌ Could not find status field or option."
+          echo "❌ Could not find status field or option for '${{ github.event.inputs.status_option_name }}'."
           exit 1
         fi
 
@@ -153,7 +154,7 @@ EOF
         curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
           --data "$(jq -nc --arg q "$mutation" '{query: $q}')" https://api.github.com/graphql | jq .
 
-    - name: 🎉 Success Summary
+    - name: 🎉 Summary
       run: |
         echo "✅ Issue created and added to project '${{ github.event.inputs.project_title }}'"
         echo "📝 Title: ${{ github.event.inputs.issue_title }}"
