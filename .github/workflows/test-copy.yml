@@ -1,4 +1,4 @@
-name: Create Issue in Personal ProjectV2 with Status
+name: Create Issue and Set Project Status
 
 on:
   workflow_dispatch:
@@ -7,112 +7,55 @@ on:
         description: "Title of the issue"
         required: true
       issue_body:
-        description: "Body content of the issue"
+        description: "Issue body"
         required: false
         default: ""
       project_title:
-        description: "Your Project v2 name"
+        description: "Project V2 title (exact match)"
         required: true
-      status_option_name:
-        description: "Status option (e.g., To do, In Progress)"
+      status_option:
+        description: "Status (e.g., Todo, In Progress)"
         required: true
 
 jobs:
-  create-and-add:
+  process-issue:
     runs-on: ubuntu-latest
-    env:
-      GH_PAT: ${{ secrets.GH_PAT }}
-
     steps:
-    - name: Create issue
-      id: create_issue
-      run: |
-        response=$(curl -s -X POST https://api.github.com/repos/${{ github.repository }}/issues \
-          -H "Authorization: Bearer $GH_PAT" \
-          -H "Accept: application/vnd.github+json" \
-          -d "{\"title\":\"${{ inputs.issue_title }}\",\"body\":\"${{ inputs.issue_body }}\"}")
-        echo "$response" | jq .
-        echo "issue_node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
+      - name: Get Project ID
+        id: get_project
+        run: |
+          # Fetch all projects for the user/org
+          query='query { viewer { projectsV2(first: 20) { nodes { id title } } } }'
+          result=$(gh api graphql -f query="$query")
+          
+          # Extract project ID by title (exact match)
+          project_id=$(echo "$result" | jq -r --arg title "${{ inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title == $title) | .id')
+          
+          if [ -z "$project_id" ]; then
+            echo "::error::Project '${{ inputs.project_title }}' not found!"
+            exit 1
+          fi
+          
+          echo "project_id=$project_id" >> $GITHUB_OUTPUT
 
-    - name: Get ProjectV2 ID (Personal Account)
-      id: get_project
-      run: |
-        query='{
-          viewer {
-            projectsV2(first: 20) {
-              nodes {
-                id
-                title
-              }
-            }
-          }
-        }'
-        result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$(echo $query)\"}" https://api.github.com/graphql)
-        project_id=$(echo "$result" | jq -r --arg project_title "${{ inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title==$project_title) | .id')
-        echo "project_id=$project_id" >> $GITHUB_OUTPUT
+      - name: Create Issue
+        id: create_issue
+        run: |
+          response=$(gh issue create --title "${{ inputs.issue_title }}" --body "${{ inputs.issue_body }}" --json node_id)
+          echo "node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
 
-    - name: Get Status Field and Option IDs
-      id: get_status_info
-      run: |
-        query='{
-          node(id: "'"${{ steps.get_project.outputs.project_id }}"'") {
-            ... on ProjectV2 {
-              fields(first: 20) {
-                nodes {
-                  ... on ProjectV2SingleSelectField {
-                    id
-                    name
-                    options {
-                      id
-                      name
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }'
-        result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$(echo $query)\"}" https://api.github.com/graphql)
-        status_field_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
-        status_option_id=$(echo "$result" | jq -r --arg status_name "${{ inputs.status_option_name }}" '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name==$status_name) | .id')
-        echo "status_field_id=$status_field_id" >> $GITHUB_OUTPUT
-        echo "status_option_id=$status_option_id" >> $GITHUB_OUTPUT
+      - name: Add Issue to Project
+        uses: actions/add-to-project@v1
+        with:
+          project-url: https://github.com/users/${{ github.repository_owner }}/projects/${{ fromJson(steps.get_project.outputs.project_id) }} # Not needed, but kept for reference
+          content-id: ${{ steps.create_issue.outputs.node_id }}
+          github-token: ${{ secrets.GH_PAT}}
 
-    - name: Add Issue to Project
-      id: add_to_project
-      run: |
-        mutation='mutation {
-          addProjectV2ItemById(input: {
-            projectId: "'"${{ steps.get_project.outputs.project_id }}"'",
-            contentId: "'"${{ steps.create_issue.outputs.issue_node_id }}"'"
-          }) {
-            item {
-              id
-            }
-          }
-        }'
-        result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$(echo $mutation)\"}" https://api.github.com/graphql)
-        item_id=$(echo "$result" | jq -r '.data.addProjectV2ItemById.item.id')
-        echo "item_id=$item_id" >> $GITHUB_OUTPUT
-
-    - name: Set Status Field
-      run: |
-        mutation='mutation {
-          updateProjectV2ItemFieldValue(input: {
-            projectId: "'"${{ steps.get_project.outputs.project_id }}"'",
-            itemId: "'"${{ steps.add_to_project.outputs.item_id }}"'",
-            fieldId: "'"${{ steps.get_status_info.outputs.status_field_id }}"'",
-            value: {
-              singleSelectOptionId: "'"${{ steps.get_status_info.outputs.status_option_id }}"'"
-            }
-          }) {
-            projectV2Item {
-              id
-            }
-          }
-        }'
-        curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$(echo $mutation)\"}" https://api.github.com/graphql | jq .
+      - name: Update Status Field
+        uses: alex-page/update-project-v2-item-field@v2
+        with:
+          project-id: ${{ steps.get_project.outputs.project_id }}
+          item-id: ${{ steps.add_to_project.outputs.itemId }}
+          field-name: "Status"
+          value: "${{ inputs.status_option }}"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
