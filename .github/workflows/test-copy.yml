@@ -22,6 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
+      contents: read
+    
+    env:
+      GH_TOKEN: ${{ github.token }}  # This authenticates the gh CLI
 
     steps:
       - name: Checkout
@@ -30,19 +34,45 @@ jobs:
       - name: Get Project ID
         id: get_project
         run: |
-          query='query { viewer { projectsV2(first: 20) { nodes { id title } } }'
+          # Debug: Print token status
+          echo "Checking GitHub CLI authentication..."
+          gh auth status
+          
+          # GraphQL query
+          query='query {
+            viewer {
+              projectsV2(first: 20) {
+                nodes {
+                  id
+                  title
+                  number
+                }
+              }
+            }
+          }'
+          
+          echo "Fetching projects..."
           result=$(gh api graphql -f query="$query")
+          echo "API Response: $result"
+          
           project_id=$(echo "$result" | jq -r --arg title "${{ github.event.inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title == $title) | .id')
+          
           if [ -z "$project_id" ]; then
-            echo "Error: Project not found"
+            echo "::error::Project '${{ github.event.inputs.project_title }}' not found. Available projects:"
+            echo "$result" | jq -r '.data.viewer.projectsV2.nodes[] | "- \(.title) (ID: \(.id))"'
             exit 1
           fi
+          
+          echo "Found project ID: $project_id"
           echo "project_id=$project_id" >> $GITHUB_OUTPUT
-          github-token: ${{ secrets.GH_PAT }}
+
       - name: Create Issue
         id: create_issue
         run: |
-          response=$(gh issue create --title "${{ github.event.inputs.issue_title }}" --body "${{ github.event.inputs.issue_body }}" --json node_id)
+          response=$(gh issue create \
+            --title "${{ github.event.inputs.issue_title }}" \
+            --body "${{ github.event.inputs.issue_body }}" \
+            --json node_id)
           echo "node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
 
       - name: Add Issue to Project
@@ -50,18 +80,19 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.projects.addProjectItem({
+            const result = await github.rest.projects.addProjectItem({
               project_id: ${{ steps.get_project.outputs.project_id }},
               content_id: ${{ steps.create_issue.outputs.node_id }},
               content_type: 'Issue',
-            })
-          github-token: ${{ secrets.GH_PAT }}
+            });
+            core.setOutput('itemId', result.data.id);
+          github-token: ${{ github.token }}
 
-      # - name: Update Status Field
-      #   uses: alex-page/update-project-v2-item-field@v2
-      #   with:
-      #     project-id: ${{ steps.get_project.outputs.project_id }}
-      #     item-id: ${{ steps.add_to_project.outputs.itemId }}
-      #     field-name: "Status"
-      #     value: "${{ github.event.inputs.status_option }}"
-      #     github-token: ${{ secrets.GH_PAT }}
+      - name: Update Status Field
+        uses: alex-page/update-project-v2-item-field@v2
+        with:
+          project-id: ${{ steps.get_project.outputs.project_id }}
+          item-id: ${{ steps.add_to_project.outputs.itemId }}
+          field-name: "Status"
+          value: "${{ github.event.inputs.status_option }}"
+          github-token: ${{ github.token }}
