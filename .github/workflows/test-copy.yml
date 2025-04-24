@@ -38,7 +38,8 @@ jobs:
     - name: Get ProjectV2 ID (Personal Account)
       id: get_project
       run: |
-        query='{
+        query=$(cat <<EOF
+        {
           viewer {
             projectsV2(first: 20) {
               nodes {
@@ -47,19 +48,28 @@ jobs:
               }
             }
           }
-        }'
+        }
+EOF
+        )
 
         result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$query\"}" https://api.github.com/graphql)
+          --data "$(jq -nc --arg q "$query" '{query: $q}')" https://api.github.com/graphql)
 
         echo "$result" | jq .
         project_id=$(echo "$result" | jq -r '.data.viewer.projectsV2.nodes[] | select(.title=="${{ github.event.inputs.project_title }}") | .id')
+
+        if [ -z "$project_id" ]; then
+          echo "❌ Project not found!"
+          exit 1
+        fi
+
         echo "project_id=$project_id" >> $GITHUB_OUTPUT
 
     - name: Get Status Field and Option IDs
       id: get_status_info
       run: |
-        query='{
+        query=$(cat <<EOF
+        {
           node(id: "${{ steps.get_project.outputs.project_id }}") {
             ... on ProjectV2 {
               fields(first: 20) {
@@ -76,14 +86,22 @@ jobs:
               }
             }
           }
-        }'
+        }
+EOF
+        )
 
         result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$query\"}" https://api.github.com/graphql)
+          --data "$(jq -nc --arg q "$query" '{query: $q}')" https://api.github.com/graphql)
 
         echo "$result" | jq .
+
         status_field_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .id')
         status_option_id=$(echo "$result" | jq -r '.data.node.fields.nodes[] | select(.name=="Status") | .options[] | select(.name=="${{ github.event.inputs.status_option_name }}") | .id')
+
+        if [ -z "$status_field_id" ] || [ -z "$status_option_id" ]; then
+          echo "❌ Could not find status field or option."
+          exit 1
+        fi
 
         echo "status_field_id=$status_field_id" >> $GITHUB_OUTPUT
         echo "status_option_id=$status_option_id" >> $GITHUB_OUTPUT
@@ -91,7 +109,8 @@ jobs:
     - name: Add Issue to Project
       id: add_to_project
       run: |
-        mutation='mutation {
+        mutation=$(cat <<EOF
+        mutation {
           addProjectV2ItemById(input: {
             projectId: "${{ steps.get_project.outputs.project_id }}",
             contentId: "${{ steps.create_issue.outputs.issue_node_id }}"
@@ -100,10 +119,12 @@ jobs:
               id
             }
           }
-        }'
+        }
+EOF
+        )
 
         result=$(curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$mutation\"}" https://api.github.com/graphql)
+          --data "$(jq -nc --arg q "$mutation" '{query: $q}')" https://api.github.com/graphql)
 
         echo "$result" | jq .
         item_id=$(echo "$result" | jq -r '.data.addProjectV2ItemById.item.id')
@@ -111,7 +132,8 @@ jobs:
 
     - name: Set Status Field
       run: |
-        mutation='mutation {
+        mutation=$(cat <<EOF
+        mutation {
           updateProjectV2ItemFieldValue(input: {
             projectId: "${{ steps.get_project.outputs.project_id }}",
             itemId: "${{ steps.add_to_project.outputs.item_id }}",
@@ -124,7 +146,15 @@ jobs:
               id
             }
           }
-        }'
+        }
+EOF
+        )
 
         curl -s -X POST -H "Authorization: Bearer $GH_PAT" -H "Content-Type: application/json" \
-          --data "{\"query\":\"$mutation\"}" https://api.github.com/graphql | jq .
+          --data "$(jq -nc --arg q "$mutation" '{query: $q}')" https://api.github.com/graphql | jq .
+
+    - name: 🎉 Success Summary
+      run: |
+        echo "✅ Issue created and added to project '${{ github.event.inputs.project_title }}'"
+        echo "📝 Title: ${{ github.event.inputs.issue_title }}"
+        echo "📌 Status: ${{ github.event.inputs.status_option_name }}"
