@@ -25,21 +25,26 @@ jobs:
       - name: Get Project ID
         id: get_project
         run: |
-          query='query { viewer { projectsV2(first: 20) { nodes { id title } } } }'
+          query='query { viewer { projectsV2(first: 20) { nodes { id title } } }'
           result=$(gh api graphql -f query="$query")
-          project_id=$(echo "$result" | jq -r --arg title "${{ inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title == $title) | .id')
+          project_id=$(echo "$result" | jq -r --arg title "${{ github.event.inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title == $title) | .id')
+          if [ -z "$project_id" ]; then
+            echo "Error: Project not found"
+            exit 1
+          fi
           echo "project_id=$project_id" >> $GITHUB_OUTPUT
 
       - name: Create Issue
         id: create_issue
         run: |
-          response=$(gh issue create --title "${{ inputs.issue_title }}" --body "${{ inputs.issue_body }}" --json node_id)
+          response=$(gh issue create --title "${{ github.event.inputs.issue_title }}" --body "${{ github.event.inputs.issue_body }}" --json node_id)
           echo "node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
 
       - name: Add Issue to Project
-        uses: actions/add-to-project@v1  # Verified GitHub Action
+        id: add_to_project
+        uses: actions/add-to-project@v1
         with:
-          project-url: https://github.com/users/${{ github.repository_owner }}/projects/  # Placeholder (not used with content-id)
+          project-url: https://github.com/users/${{ github.repository_owner }}/projects/
           content-id: ${{ steps.create_issue.outputs.node_id }}
           github-token: ${{ secrets.GH_PAT }}
 
@@ -49,5 +54,5 @@ jobs:
           project-id: ${{ steps.get_project.outputs.project_id }}
           item-id: ${{ steps.add_to_project.outputs.itemId }}
           field-name: "Status"
-          value: "${{ inputs.status_option }}"
+          value: "${{ github.event.inputs.status_option }}"
           github-token: ${{ secrets.GH_PAT }}
