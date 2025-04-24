@@ -22,12 +22,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      projects: write
-      organization-projects: write
+      # Correct permission syntax for projects:
       contents: read
-    
+      packages: read
+      # For organization projects:
+
     env:
-      GH_TOKEN: ${{ secrets.GH_PAT || github.token }}  # Uses PAT if available, falls back to default token
+      GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
 
     steps:
       - name: Checkout
@@ -36,28 +37,22 @@ jobs:
       - name: Get Project ID
         id: get_project
         run: |
-          # Verify authentication
-          echo "Authenticating GitHub CLI..."
           gh auth status || gh auth login --with-token <<< "$GH_TOKEN"
           
-          # Query for both user and organization projects
           query='query {
             viewer {
               projectsV2(first: 20) {
                 nodes {
                   id
                   title
-                  number
                 }
               }
               organizations(first: 5) {
                 nodes {
-                  login
                   projectsV2(first: 20) {
                     nodes {
                       id
                       title
-                      number
                     }
                   }
                 }
@@ -65,62 +60,17 @@ jobs:
             }
           }'
           
-          echo "Fetching projects..."
           result=$(gh api graphql -f query="$query")
-          echo "API Response: $result"
-          
-          # Search in user projects
           project_id=$(echo "$result" | jq -r --arg title "${{ inputs.project_title }}" '
-            .data.viewer.projectsV2.nodes[] | select(.title == $title) | .id
+            .data.viewer.projectsV2.nodes[] | select(.title == $title) | .id // 
+            .data.viewer.organizations.nodes[].projectsV2.nodes[] | select(.title == $title) | .id
           ')
           
-          # If not found, search in organization projects
           if [ -z "$project_id" ]; then
-            echo "Checking organization projects..."
-            project_id=$(echo "$result" | jq -r --arg title "${{ inputs.project_title }}" '
-              .data.viewer.organizations.nodes[].projectsV2.nodes[] | select(.title == $title) | .id
-            ')
-          fi
-          
-          if [ -z "$project_id" ]; then
-            echo "::error::Project '${{ inputs.project_title }}' not found. Available projects:"
-            echo "User Projects:"
-            echo "$result" | jq -r '.data.viewer.projectsV2.nodes[] | "- \(.title) (#\(.number))"'
-            echo "Organization Projects:"
-            echo "$result" | jq -r '.data.viewer.organizations.nodes[] | "Org: \(.login)", .projectsV2.nodes[] | "- \(.title) (#\(.number))"'
+            echo "::error::Project not found"
+            echo "$result" | jq .
             exit 1
           fi
-          
-          echo "Found project ID: $project_id"
           echo "project_id=$project_id" >> $GITHUB_OUTPUT
 
-      - name: Create Issue
-        id: create_issue
-        run: |
-          response=$(gh issue create \
-            --title "${{ inputs.issue_title }}" \
-            --body "${{ inputs.issue_body }}" \
-            --json node_id)
-          echo "node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
-
-      - name: Add Issue to Project
-        id: add_to_project
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const result = await github.rest.projects.addProjectItem({
-              project_id: ${{ steps.get_project.outputs.project_id }},
-              content_id: ${{ steps.create_issue.outputs.node_id }},
-              content_type: 'Issue',
-            });
-            core.setOutput('itemId', result.data.id);
-          github-token: ${{ env.GH_TOKEN }}
-
-      # - name: Update Status Field
-      #   uses: alex-page/update-project-v2-item-field@v2
-      #   with:
-      #     project-id: ${{ steps.get_project.outputs.project_id }}
-      #     item-id: ${{ steps.add_to_project.outputs.itemId }}
-      #     field-name: "Status"
-      #     value: "${{ inputs.status_option }}"
-      #     github-token: ${{ env.GH_TOKEN }}
+      # Rest of your steps remain the same...
