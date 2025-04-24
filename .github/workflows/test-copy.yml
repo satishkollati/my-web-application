@@ -20,22 +20,14 @@ on:
 jobs:
   process-issue:
     runs-on: ubuntu-latest
+
     steps:
       - name: Get Project ID
         id: get_project
         run: |
-          # Fetch all projects for the user/org
           query='query { viewer { projectsV2(first: 20) { nodes { id title } } } }'
           result=$(gh api graphql -f query="$query")
-          
-          # Extract project ID by title (exact match)
           project_id=$(echo "$result" | jq -r --arg title "${{ inputs.project_title }}" '.data.viewer.projectsV2.nodes[] | select(.title == $title) | .id')
-          
-          if [ -z "$project_id" ]; then
-            echo "::error::Project '${{ inputs.project_title }}' not found!"
-            exit 1
-          fi
-          
           echo "project_id=$project_id" >> $GITHUB_OUTPUT
 
       - name: Create Issue
@@ -45,11 +37,11 @@ jobs:
           echo "node_id=$(echo "$response" | jq -r '.node_id')" >> $GITHUB_OUTPUT
 
       - name: Add Issue to Project
-        uses: actions/add-to-project@v1
+        uses: actions/add-to-project@v1  # Verified GitHub Action
         with:
-          project-url: https://github.com/users/${{ github.repository_owner }}/projects/${{ fromJson(steps.get_project.outputs.project_id) }} # Not needed, but kept for reference
+          project-url: https://github.com/users/${{ github.repository_owner }}/projects/  # Placeholder (not used with content-id)
           content-id: ${{ steps.create_issue.outputs.node_id }}
-          github-token: ${{ secrets.GH_PAT}}
+          github-token: ${{ secrets.GH_PAT }}
 
       - name: Update Status Field
         uses: alex-page/update-project-v2-item-field@v2
@@ -58,4 +50,4 @@ jobs:
           item-id: ${{ steps.add_to_project.outputs.itemId }}
           field-name: "Status"
           value: "${{ inputs.status_option }}"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GH_PAT }}
