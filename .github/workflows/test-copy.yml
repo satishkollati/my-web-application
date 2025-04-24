@@ -22,7 +22,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      projects: write
 
     steps:
       - name: Checkout
