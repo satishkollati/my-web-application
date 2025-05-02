@@ -1,0 +1,33 @@
+name: PR Merge Handler
+
+on:
+  pull_request_target:
+    types: [closed]
+
+jobs:
+  on-merge:
+    if: github.event.pull_request.merged
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create follow-up issue and add to project
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          # Create the issue and capture output
+          ISSUE_OUTPUT=$(gh issue create \
+            --title "Post-merge: PR #${{ github.event.pull_request.number }}" \
+            --body "Merged PR: ${{ github.event.pull_request.title }}\n\n${{ github.event.pull_request.html_url }}" \
+            --label "auto-tracked")
+          
+          # Extract issue URL from output
+          ISSUE_URL=$(echo "$ISSUE_OUTPUT" | grep -o 'https://github.com/[^ ]*')
+          
+          # Add to project board (updated syntax)
+          gh project item-add 3 --owner satishkollati --url "$ISSUE_URL"
+
+      - name: Deploy
+        run: |
+          echo "Deploying ${{ github.event.pull_request.merge_commit_sha }}"
+          # Your deployment commands here
