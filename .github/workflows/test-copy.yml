@@ -13,19 +13,21 @@ jobs:
 
       - name: Create follow-up issue and add to project
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}
+          GH_TOKEN: ${{ secrets.PAT }}
         run: |
-          # Create the issue
-          ISSUE_URL=$(gh issue create \
+          # Create the issue and capture output
+          ISSUE_OUTPUT=$(gh issue create \
             --title "Post-merge: PR #${{ github.event.pull_request.number }}" \
             --body "Merged PR: ${{ github.event.pull_request.title }}\n\n${{ github.event.pull_request.html_url }}" \
-            --label "auto-tracked" \
-            --json url --jq '.url')
+            --label "auto-tracked")
           
-          # Add to project board (user project)
+          # Extract issue URL from output
+          ISSUE_URL=$(echo "$ISSUE_OUTPUT" | grep -o 'https://github.com/[^ ]*')
+          
+          # Add to project board
           gh project item-add 3 --user satishkollati --url "$ISSUE_URL"
 
       - name: Deploy
         run: |
           echo "Deploying ${{ github.event.pull_request.merge_commit_sha }}"
-          # Your actual deployment commands here
+          # Your deployment commands here
