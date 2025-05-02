@@ -13,7 +13,7 @@ jobs:
 
       - name: Create follow-up issue and add to project
         env:
-          GH_TOKEN: ${{ secrets.PAT }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           # Create the issue
           ISSUE_URL=$(gh issue create \
