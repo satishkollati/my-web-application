@@ -1,76 +1,34 @@
-name: Create Issue and Set Project Status
+name: On PR Merge - Create Issue & Add to Project
 
 on:
-  workflow_dispatch:
-    inputs:
-      issue_title:
-        description: "Title of the issue"
-        required: true
-      issue_body:
-        description: "Issue body"
-        required: false
-        default: ""
-      project_title:
-        description: "Project V2 title (exact match)"
-        required: true
-      status_option:
-        description: "Status (e.g., Todo, In Progress)"
-        required: true
+  pull_request:
+    types: [closed]
 
 jobs:
-  process-issue:
+  handle-merged-pr:
+    if: github.event.pull_request.merged
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      # Correct permission syntax for projects:
-      contents: read
-      packages: read
-      # For organization projects:
-
-    env:
-      GH_TOKEN: ${{ secrets.GH_PAT || github.token }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get Project ID
-        id: get_project
+      # Create issue using GitHub CLI
+      - name: Create Issue
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}  # PAT needs 'repo' scope
         run: |
-          gh auth status || gh auth login --with-token <<< "$GH_TOKEN"
-          
-          query='query {
-            viewer {
-              projectsV2(first: 20) {
-                nodes {
-                  id
-                  title
-                }
-              }
-              organizations(first: 5) {
-                nodes {
-                  projectsV2(first: 20) {
-                    nodes {
-                      id
-                      title
-                    }
-                  }
-                }
-              }
-            }
-          }'
-          
-          result=$(gh api graphql -f query="$query")
-          project_id=$(echo "$result" | jq -r --arg title "${{ inputs.project_title }}" '
-            .data.viewer.projectsV2.nodes[] | select(.title == $title) | .id // 
-            .data.viewer.organizations.nodes[].projectsV2.nodes[] | select(.title == $title) | .id
-          ')
-          
-          if [ -z "$project_id" ]; then
-            echo "::error::Project not found"
-            echo "$result" | jq .
-            exit 1
-          fi
-          echo "project_id=$project_id" >> $GITHUB_OUTPUT
+          gh issue create \
+            --title "Follow-up from PR #${{ github.event.pull_request.number }}" \
+            --body "Merged PR: ${{ github.event.pull_request.title }}\n\n${{ github.event.pull_request.html_url }}" \
+            --label "auto-created"
 
-      # Rest of your steps remain the same...
+      # Add to project using GitHub's official action
+      - name: Add to Project
+        uses: actions/add-to-project@v0.6.0
+        with:
+          project-url: https://github.com/orgs/YOUR_ORG/projects/PROJECT_NUMBER
+          github-token: ${{ secrets.PAT }}  # PAT needs 'project' scope
+          labeled: "auto-created"
+
+      # Simple deployment example (customize this)
+      - name: Deploy
+        run: |
+          echo "🚀 Starting deployment..."
+          # Add your actual deployment commands here
