@@ -24,8 +24,8 @@ jobs:
           # Extract issue URL from output
           ISSUE_URL=$(echo "$ISSUE_OUTPUT" | grep -o 'https://github.com/[^ ]*')
           
-          # Add to project board
-          gh project item-add 3 --user satishkollati --url "$ISSUE_URL"
+          # Add to project board (updated syntax)
+          gh project item-add 3 --owner satishkollati --url "$ISSUE_URL"
 
       - name: Deploy
         run: |
