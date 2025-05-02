@@ -26,7 +26,7 @@ jobs:
       - name: Add to project board
         uses: actions/add-to-project@v0.6.0
         with:
-          project-url: https://github.com/orgs/YOUR_ORG/projects/YOUR_PROJECT_NUMBER
+          project-url: https://github.com/users/satishkollati/projects/3
           github-token: ${{ secrets.GH_PAT }}
           labeled: "auto-tracked"
 
