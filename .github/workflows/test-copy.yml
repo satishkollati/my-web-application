@@ -1,33 +1,38 @@
-name: On PR Merge - Create Issue & Add to Project
+name: PR Merge Handler
+
 on:
-  pull_request:
+  pull_request_target:
     types: [closed]
 
 jobs:
-  handle-merged-pr:
+  on-merge:
     if: github.event.pull_request.merged
     runs-on: ubuntu-latest
     steps:
+      # Mandatory checkout for any repository access
+      - uses: actions/checkout@v4
+
       # Create issue using GitHub CLI
-      - name: Create Issue
+      - name: Create follow-up issue
         env:
-          GH_TOKEN: ${{ secrets.GH_PAT }}  # PAT needs 'repo' scope
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           gh issue create \
-            --title "Follow-up from PR #${{ github.event.pull_request.number }}" \
+            --title "Post-merge: PR #${{ github.event.pull_request.number }}" \
             --body "Merged PR: ${{ github.event.pull_request.title }}\n\n${{ github.event.pull_request.html_url }}" \
-            --label "auto-created"
+            --label "auto-tracked"
 
-      # Add to project using GitHub's official action
-      - name: Add to Project
+      # Add to project using dedicated action
+      - name: Add to project board
         uses: actions/add-to-project@v0.6.0
         with:
-          project-url: https://github.com/orgs/YOUR_ORG/projects/PROJECT_NUMBER
-          github-token: ${{ secrets.PAT }}  # PAT needs 'project' scope
-          labeled: "auto-created"
+          project-url: https://github.com/orgs/YOUR_ORG/projects/YOUR_PROJECT_NUMBER
+          github-token: ${{ secrets.GH_PAT }}
+          labeled: "auto-tracked"
 
-      # Simple deployment example (customize this)
+      # Deployment phase
       - name: Deploy
         run: |
-          echo "🚀 Starting deployment..."
-          # Add your actual deployment commands here
+          echo "🚀 Deploying ${{ github.event.pull_request.merge_commit_sha }}"
+          # Add actual deployment commands here
+          # Example: ./deploy.sh ${{ github.event.pull_request.merge_commit_sha }}
