@@ -1,5 +1,4 @@
 name: On PR Merge - Create Issue & Add to Project
-
 on:
   pull_request:
     types: [closed]
